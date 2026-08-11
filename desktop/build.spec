@@ -53,13 +53,15 @@ elif IS_WIN and os.path.exists(os.path.join(ROOT, "desktop", "icons", "app.ico")
 
 if IS_WIN:
     # Windows 交单个 exe 最省事（作业压缩包里就一个文件）。启动时解压到临时目录，
-    # 头一次打开会慢几秒。console=True 是有意的：窗口里印着本机地址，
-    # 浏览器万一没自动弹出来，照着地址手动打开就行。
+    # 头一次打开会慢几秒。
+    # console=False：黑色控制台窗口会让人觉得这是个脚本而不是应用。程序改为
+    # 用浏览器的应用窗口模式（无地址栏）呈现，关掉窗口即退出；启动信息写进
+    # 用户目录的 run.log，出问题时还能查。
     exe = EXE(
         pyz, a.scripts, a.binaries, a.datas, [],
         name="CorpusAligner",
         debug=False, bootloader_ignore_signals=False, strip=False, upx=True,
-        runtime_tmpdir=None, console=True, icon=icon,
+        runtime_tmpdir=None, console=False, icon=icon,
     )
 else:
     exe = EXE(
