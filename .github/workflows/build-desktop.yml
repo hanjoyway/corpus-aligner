@@ -1,0 +1,57 @@
+name: 构建桌面版
+
+# 手动触发，或打 desktop-* 标签时自动构建。产物在本次运行的 Artifacts 里下载。
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "desktop-*"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false        # 一个平台挂了，另一个照样出包
+      matrix:
+        include:
+          - os: macos-latest
+            artifact: CorpusAligner-macOS
+          - os: windows-latest
+            artifact: CorpusAligner-Windows
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"      # 3.14 的 PyInstaller 支持还不稳，先钉 3.13
+          cache: pip
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r desktop/requirements-build.txt
+
+      - name: 冒烟测试（不打包也得先能跑起来）
+        run: python -m desktop.selftest
+
+      - name: 打包
+        run: pyinstaller desktop/build.spec --noconfirm
+
+      # macOS 产物是 .app 目录。直接上传会丢掉可执行位，必须先自己压成 zip。
+      - name: 压缩产物（macOS）
+        if: runner.os == 'macOS'
+        run: |
+          cd dist
+          zip -qry CorpusAligner-macOS.zip CorpusAligner.app
+          rm -rf CorpusAligner.app CorpusAligner
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            dist/*.zip
+            dist/*.exe
+          if-no-files-found: error

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>设置 · 平行语料对齐工作台</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<style>
+  :root{--bg-deep:#1c1917;--bg:#f4f1ec;--card:#fff;--text:#1c1917;--text2:#78716c;
+    --muted:#a8a29e;--accent:#b45830;--accent-hover:#9a4a28;--accent-soft:#fef2ec;
+    --gold:#d6a85f;--border:#e7e5e4;--ok:#16a34a;--radius:7px;
+    --serif:'Crimson Pro','Noto Serif SC',serif;
+    --body:'DM Sans',system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,Menlo,Consolas,monospace}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+  .topbar{background:var(--bg-deep);height:56px;display:flex;align-items:center;padding:0 24px;gap:13px}
+  .brand{font-family:var(--serif);font-size:19px;font-weight:700;color:#faf8f4}
+  .back{margin-left:auto;color:#c9c3bb;text-decoration:none;font-size:13px;
+    border:1px solid #45403a;border-radius:5px;padding:5px 11px}
+  .back:hover{color:#fff;border-color:#6b635a}
+  .wrap{max-width:760px;margin:34px auto 60px;padding:0 24px}
+  h1{font-family:var(--serif);font-size:26px;font-weight:700;margin-bottom:8px}
+  .lede{color:var(--text2);font-size:14px;line-height:1.75;margin-bottom:26px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:20px 22px;margin-bottom:14px}
+  .row{display:flex;align-items:baseline;gap:10px;margin-bottom:4px}
+  .name{font-weight:600;font-size:15px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:none}
+  .dot.on{background:var(--ok)}
+  .state{font-size:12px;color:var(--muted);margin-left:auto}
+  .use{color:var(--text2);font-size:13px;line-height:1.7;margin-bottom:12px}
+  .use a{color:var(--accent);text-decoration:none}
+  .use a:hover{text-decoration:underline}
+  input[type=password],input[type=text]{width:100%;padding:9px 12px;border:1px solid var(--border);
+    border-radius:5px;font-family:var(--mono);font-size:13px;background:#fcfbfa}
+  input:focus{outline:none;border-color:var(--accent);background:#fff}
+  .actions{display:flex;align-items:center;gap:12px;margin-top:20px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:5px;padding:10px 22px;
+    font-family:var(--body);font-size:14px;font-weight:600;cursor:pointer}
+  button:hover{background:var(--accent-hover)}
+  button.ghost{background:transparent;color:var(--text2);border:1px solid var(--border)}
+  button.ghost:hover{background:#efece7;color:var(--text)}
+  .msg{font-size:13px;color:var(--ok);font-weight:600}
+  .note{background:var(--accent-soft);border:1px solid #f3d9cb;border-radius:var(--radius);
+    padding:14px 18px;font-size:13px;line-height:1.8;color:#7c3d1f;margin-bottom:24px}
+  .note b{font-weight:700}
+  code{font-family:var(--mono);font-size:12px;background:#efece7;padding:1px 5px;border-radius:3px}
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <svg width="38" height="34" viewBox="0 0 76 76">
+      <rect x="2" y="2" width="72" height="72" rx="18" fill="#33302b" stroke="#4a443d" stroke-width="1.5"/>
+      <rect x="18" y="27" width="40" height="7" rx="3.5" fill="#b45830"/>
+      <rect x="18" y="42" width="28" height="7" rx="3.5" fill="#d6a85f"/>
+      <circle cx="54" cy="45.5" r="3.2" fill="#d6a85f"/>
+    </svg>
+    <span class="brand">设置</span>
+    <a class="back" href="/align">← 回到工作台</a>
+  </header>
+
+  <div class="wrap">
+    <h1>接口密钥</h1>
+    <p class="lede">
+      本工具的句子对齐、扫描件识别、AI 校验分别调用三家模型服务。密钥只保存在你自己
+      这台电脑上（<code>{{ path }}</code>），不随程序分发，也不会上传到任何地方。
+    </p>
+
+    <div class="note">
+      <b>一个都不填也能用。</b>对齐会自动改走内置的离线算法（Gale &amp; Church 长度对齐 +
+      数字／缩写锚点），不联网、不花钱，处理干净的双语文本已经够用；填了 SiliconFlow
+      的密钥则升级为 bge-m3 语义对齐，遇到增译、删译、语序调整时更准。
+    </div>
+
+    <form id="f">
+      {% for f in fields %}
+      <div class="card">
+        <div class="row">
+          <span class="dot {% if status[f.env] %}on{% endif %}"></span>
+          <span class="name">{{ f.label }}</span>
+          <span class="state">{% if status[f.env] %}已配置{% else %}未配置{% endif %}</span>
+        </div>
+        <div class="use">{{ f.use }} 申请地址：<a href="{{ f.url }}" target="_blank" rel="noopener">{{ f.url }}</a></div>
+        <input type="password" name="{{ f.env }}" autocomplete="off" spellcheck="false"
+               placeholder="{% if status[f.env] %}已保存，留空则保持不变{% else %}粘贴密钥…{% endif %}">
+      </div>
+      {% endfor %}
+      <div class="actions">
+        <button type="submit">保存</button>
+        <button type="button" class="ghost" id="clear">清空全部密钥</button>
+        <span class="msg" id="msg"></span>
+      </div>
+    </form>
+  </div>
+
+<script>
+const msg = document.getElementById('msg');
+function say(t){ msg.textContent = t; setTimeout(()=>{ msg.textContent=''; }, 3000); }
+
+document.getElementById('f').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const body = {};
+  new FormData(ev.target).forEach((v,k)=>{ if(String(v).trim()) body[k]=String(v).trim(); });
+  if(!Object.keys(body).length) return say('没有填写内容');
+  const r = await fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'},
+                                          body: JSON.stringify(body)});
+  if(r.ok){ say('已保存，立即生效'); setTimeout(()=>location.reload(), 700); }
+  else { say('保存失败'); }
+});
+
+document.getElementById('clear').addEventListener('click', async () => {
+  if(!confirm('清空本机保存的全部密钥？对齐将退回离线模式。')) return;
+  const r = await fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'},
+                                          body: JSON.stringify({_clear:true})});
+  if(r.ok){ say('已清空'); setTimeout(()=>location.reload(), 700); }
+});
+</script>
+</body>
+</html>

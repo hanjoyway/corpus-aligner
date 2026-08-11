@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>平行语料对齐工具</title>
+<style>
+  :root{--bg-deep:#1c1917;--bg:#f4f1ec;--card:#fff;--hover:#f5f0ea;--stripe:#faf6f1;
+    --text:#1c1917;--text2:#78716c;--muted:#a8a29e;--accent:#b45830;--accent-hover:#9a4a28;
+    --accent-soft:#fef2ec;--gold:#d6a85f;--border:#e7e5e4;--border-l:#f0eeeb;
+    --hi:#16a34a;--hi-bg:#f0fdf4;--mid:#d6a85f;--mid-bg:#fffbeb;--lo:#dc2626;--lo-bg:#fef2f2;
+    --radius:7px;
+    --serif:'Songti SC','Noto Serif SC','SimSun',serif;
+    --body:system-ui,-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;
+    --mono:ui-monospace,Menlo,Consolas,monospace}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased;font-size:14px}
+  ::-webkit-scrollbar{width:9px;height:9px}::-webkit-scrollbar-thumb{background:#d6d3d1;border-radius:4px}
+
+  .topbar{background:var(--bg-deep);height:54px;display:flex;align-items:center;padding:0 22px;gap:13px;position:sticky;top:0;z-index:40}
+  .brand{font-family:var(--serif);font-size:18px;font-weight:700;color:#faf8f4;letter-spacing:.04em}
+  .tag{margin-left:auto;color:#9a938a;font-size:12px}
+  .tag b{color:var(--gold);font-weight:600}
+
+  .wrap{max-width:1500px;margin:0 auto;padding:22px}
+
+  .tabs{display:flex;gap:6px;margin-bottom:14px}
+  .tab{padding:8px 18px;border:1px solid var(--border);background:var(--card);border-radius:var(--radius);
+    cursor:pointer;font-size:13.5px;color:var(--text2)}
+  .tab:hover{background:var(--hover)}
+  .tab.on{background:var(--bg-deep);color:#faf8f4;border-color:var(--bg-deep);font-weight:600}
+
+  .panel{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:16px}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .cols.one{grid-template-columns:1fr}
+  .fld label{display:block;font-size:12px;color:var(--text2);margin-bottom:5px;font-weight:600}
+  textarea{width:100%;height:190px;padding:11px 13px;border:1px solid var(--border);border-radius:5px;
+    font-family:var(--body);font-size:13.5px;line-height:1.75;resize:vertical;background:#fcfbfa}
+  textarea:focus{outline:none;border-color:var(--accent);background:#fff}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.6}
+
+  .bar{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:14px}
+  button{font-family:var(--body);font-size:13px;cursor:pointer;border-radius:5px;border:1px solid var(--border);
+    background:var(--card);color:var(--text);padding:7px 13px}
+  button:hover{background:var(--hover)}
+  button:disabled{opacity:.45;cursor:default}
+  button.go{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;padding:9px 26px;font-size:14px}
+  button.go:hover{background:var(--accent-hover)}
+  button.icon{padding:7px 10px;font-size:15px;line-height:1}
+  .sep{width:1px;height:20px;background:var(--border)}
+  .file-btn{position:relative;overflow:hidden;display:inline-block}
+  .file-btn input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+  .findbox{padding:7px 11px;border:1px solid var(--border);border-radius:5px;font-size:13px;width:150px;font-family:var(--body)}
+  .findbox:focus{outline:none;border-color:var(--accent)}
+
+  .stat{display:flex;gap:20px;align-items:center;font-size:12.5px;color:var(--text2);margin-bottom:11px;flex-wrap:wrap}
+  .stat b{color:var(--text);font-weight:700}
+  .warn{background:#fffbeb;border:1px solid #f5e3b8;color:#8a6410;padding:10px 14px;border-radius:var(--radius);
+    font-size:13px;margin-bottom:12px;line-height:1.7}
+
+  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--border);border-radius:var(--radius)}
+  th{background:var(--stripe);font-size:11.5px;color:var(--text2);font-weight:600;text-align:left;
+    padding:9px 12px;border-bottom:1px solid var(--border);letter-spacing:.04em}
+  td{border-bottom:1px solid var(--border-l);padding:9px 12px;vertical-align:top;line-height:1.75}
+  tr:last-child td{border-bottom:0}
+  tr.sel td{background:var(--accent-soft)}
+  td.num{width:52px;text-align:right;color:var(--muted);font-family:var(--mono);font-size:11.5px;
+    cursor:pointer;user-select:none;padding-top:11px}
+  td.num:hover{color:var(--accent);font-weight:700}
+  td.sc{width:60px;font-family:var(--mono);font-size:11.5px;text-align:center;padding-top:11px}
+  .cell{outline:none;min-height:24px;white-space:pre-wrap;word-break:break-word;border-radius:3px;padding:2px 4px;margin:-2px -4px}
+  .cell:focus{background:#fffdf9;box-shadow:0 0 0 2px var(--accent-soft)}
+  .cell.zh{font-family:var(--serif);font-size:15px}
+  .cell.en{font-size:13.5px;color:#3f3a35}
+  .cell:empty::before{content:'（空）';color:#d6d3d1}
+  .s-hi{color:var(--hi)}.s-mid{color:var(--mid)}.s-lo{color:var(--lo);font-weight:700}
+  tr.r-lo td{background:var(--lo-bg)}tr.r-mid td{background:var(--mid-bg)}
+  mark{background:#fde68a;padding:0 1px;border-radius:2px}
+
+  .menu-wrap{position:relative;display:inline-block}
+  .menu{display:none;position:absolute;right:0;top:calc(100% + 5px);background:var(--card);
+    border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 8px 26px rgba(28,25,23,.13);
+    min-width:270px;z-index:30;overflow:hidden}
+  .menu.on{display:block}
+  .menu div{padding:10px 15px;font-size:13px;cursor:pointer;border-bottom:1px solid var(--border-l)}
+  .menu div:last-child{border-bottom:0}
+  .menu div:hover{background:var(--hover)}
+  .menu div small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+
+  .guide{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);
+    padding:0 18px;margin-bottom:16px}
+  .guide summary{cursor:pointer;font-weight:700;font-size:14px;padding:14px 0;list-style:none;
+    color:var(--text);display:flex;align-items:center;gap:8px}
+  .guide summary::-webkit-details-marker{display:none}
+  .guide summary::before{content:"▸";color:var(--accent);font-size:12px;transition:transform .15s}
+  .guide[open] summary::before{transform:rotate(90deg)}
+  .guide-in{padding-bottom:18px;border-top:1px solid var(--border-l);padding-top:14px}
+  .one-liner{font-size:13.5px;line-height:1.9;color:var(--text2);margin-bottom:14px}
+  .one-liner b{color:var(--text)}
+  .steps{margin:0 0 14px 20px;font-size:13.5px;line-height:1.95;color:var(--text2)}
+  .steps li{margin-bottom:11px;padding-left:4px}
+  .steps b{color:var(--text)}
+  .steps .tip{color:var(--muted);font-size:12.5px}
+  .k{display:inline-block;background:#efece7;border:1px solid var(--border);border-radius:4px;
+    padding:0 6px;font-size:12.5px;color:var(--text);white-space:nowrap;line-height:1.6}
+  .note-line{font-size:13px;line-height:1.9;color:var(--text2);background:var(--stripe);
+    border-left:3px solid var(--gold);padding:9px 14px;border-radius:0 5px 5px 0;margin-top:9px}
+  .note-line b{color:var(--text)}
+  .empty{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px;line-height:1.9}
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);background:var(--bg-deep);color:#faf8f4;
+    padding:11px 22px;border-radius:6px;font-size:13.5px;z-index:100;opacity:0;transition:opacity .2s;pointer-events:none;
+    max-width:80vw;text-align:center;line-height:1.6}
+  .toast.on{opacity:1}
+  details.about{margin-top:26px;font-size:13px;color:var(--text2);line-height:1.85}
+  details.about summary{cursor:pointer;font-weight:600;color:var(--text);padding:7px 0}
+  details.about p{margin:9px 0}
+  details.about code{font-family:var(--mono);font-size:12px;background:#e9e5e0;padding:1px 5px;border-radius:3px}
+  .foot{margin-top:34px;padding-top:16px;border-top:1px solid var(--border);color:var(--muted);font-size:11.5px;line-height:1.8}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <svg width="36" height="32" viewBox="0 0 76 76" aria-hidden="true">
+    <rect x="2" y="2" width="72" height="72" rx="18" fill="#33302b" stroke="#4a443d" stroke-width="1.5"/>
+    <rect x="18" y="27" width="40" height="7" rx="3.5" fill="#b45830"/>
+    <rect x="18" y="42" width="28" height="7" rx="3.5" fill="#d6a85f"/>
+    <circle cx="54" cy="45.5" r="3.2" fill="#d6a85f"/>
+  </svg>
+  <span class="brand">平行语料对齐工具</span>
+  <span class="tag">单文件网页版 · <b>全部计算在本机浏览器内完成</b></span>
+</header>
+
+<div class="wrap">
+
+  <details class="guide" open>
+    <summary>使用说明（点这里可收起）</summary>
+    <div class="guide-in">
+      <p class="one-liner">把一篇中文和它的英文译文，切成句子、自动配对，人工核对后导出成
+        翻译记忆库、Excel、双语对照 Word 等格式。<b>所有计算都在你自己的浏览器里完成</b>——
+        不联网、不上传、不用安装，文本一个字都不会离开这台电脑。</p>
+
+      <ol class="steps">
+        <li><b>放文本。</b>中英各自成篇 → 用「双文档」，分别粘进两栏；中英交替排版的一篇
+          → 切到「单文档」，整篇粘进去，程序自动分成两路。也可以导入 .txt 文件。
+          <span class="tip">第一次用，先点「载入示例」跑一遍看效果。</span></li>
+        <li><b>点「开始对齐」。</b>出来一张双列表格，左中文、右英文，逐行对应。
+          右边的得分是这一行配得有多可信，<span class="s-hi">绿色</span>放心、
+          <span class="s-mid">黄色</span>看一眼、<span class="s-lo">红色</span>八成要改。</li>
+        <li><b>核对修改。</b>
+          <span class="k">点行号</span>选中一行，按住 Shift 点另一行选一整段。然后：
+          <span class="k">合并选中</span>把几行并成一行、
+          <span class="k">上移/下移</span>错位时挪一格、
+          <span class="k">插入空行</span>补一侧缺的句子、
+          <span class="k">删除</span>去掉多余行。<br>
+          要把一行拆成两行：<b>在格子里点一下，把光标放到要断开的地方，按回车</b>。
+          原文译文都能直接打字改错别字。任何一步都能用 <span class="k">↺</span> 撤销。</li>
+        <li><b>导出。</b>点「导出 ▾」选格式：TMX 给 Trados／memoQ，Excel 和 CSV 给表格，
+          RTF 是左中右英的双栏对照（Word 直接打开），还有左右／上下对照的 txt 和
+          BFSU 双文件。</li>
+      </ol>
+
+      <p class="note-line"><b>不用担心存盘。</b>改动每隔几秒自动存在本机浏览器里，
+        意外关掉网页，下次打开会问你要不要接着改。要换电脑或长期留存，
+        导出「工程存档 (.json)」，回头用「载入存档」读回来。</p>
+      <p class="note-line"><b>底线是不丢字。</b>无论算法多没把握，都不会悄悄扔掉句子——
+        实在配不上就留单边空行并在页面顶部标出来，等你手工处理。</p>
+    </div>
+  </details>
+
+  <div class="tabs">
+    <div class="tab on" data-tab="double">双文档（中英分开）</div>
+    <div class="tab" data-tab="single">单文档（中英交替）</div>
+  </div>
+
+  <div class="panel">
+    <div class="cols" id="inputCols">
+      <div class="fld" id="fldZh">
+        <label>中文原文</label>
+        <textarea id="zhIn" placeholder="粘贴中文，或用下面的按钮导入 .txt 文件"></textarea>
+      </div>
+      <div class="fld" id="fldEn">
+        <label>英文译文</label>
+        <textarea id="enIn" placeholder="粘贴英文，或用下面的按钮导入 .txt 文件"></textarea>
+      </div>
+    </div>
+    <div class="hint" id="modeHint">中文和英文各自成篇，分别粘进两栏。段落顺序应大致对应。</div>
+    <div class="bar">
+      <button class="go" id="runBtn">开始对齐</button>
+      <span class="file-btn"><button>导入中文 .txt</button><input type="file" id="zhFile" accept=".txt,.md,text/plain"></span>
+      <span class="file-btn" id="enFileWrap"><button>导入英文 .txt</button><input type="file" id="enFile" accept=".txt,.md,text/plain"></span>
+      <span class="sep"></span>
+      <button id="swapBtn">⇄ 调换中英</button>
+      <button id="demoBtn">载入示例</button>
+      <button id="clearBtn">清空</button>
+    </div>
+  </div>
+
+  <div id="warnBox"></div>
+
+  <div class="stat" id="statBar" style="display:none">
+    <span>共 <b id="nRows">0</b> 行</span>
+    <span>中文 <b id="nZh">0</b> 句 · 英文 <b id="nEn">0</b> 句</span>
+    <span>平均得分 <b id="avgSc">—</b></span>
+    <span>需复核 <b id="nBad">0</b> 行</span>
+  </div>
+
+  <div class="bar" id="editBar" style="display:none;margin-bottom:12px">
+    <button class="icon" data-op="undo" title="撤销">↺</button>
+    <button class="icon" data-op="redo" title="重做">↻</button>
+    <span class="sep"></span>
+    <button data-op="merge">合并选中</button>
+    <button data-op="up">上移</button>
+    <button data-op="down">下移</button>
+    <button data-op="blank">插入空行</button>
+    <button data-op="del">删除</button>
+    <span class="sep"></span>
+    <button data-op="onlybad">只看待复核</button>
+    <input class="findbox" id="findBox" placeholder="查找…">
+    <span class="sep"></span>
+    <span class="menu-wrap">
+      <button id="expBtn">导出 ▾</button>
+      <div class="menu" id="expMenu">
+        <div data-fmt="tmx">TMX 翻译记忆库<small>可导入 Trados、memoQ</small></div>
+        <div data-fmt="xlsx">Excel 工作簿 (.xlsx)<small>三列：序号 / 中文 / 英文</small></div>
+        <div data-fmt="rtf">双语对照 RTF<small>左中右英双栏表格，Word 直接打开</small></div>
+        <div data-fmt="csv">CSV (.csv)<small>带 BOM，Excel 双击即开</small></div>
+        <div data-fmt="lr">左右对照 txt<small>一行一对，中英用制表符分隔</small></div>
+        <div data-fmt="stack">上下对照 txt<small>中文一行、英文一行、空行分隔</small></div>
+        <div data-fmt="bfsu">BFSU 双文件 (.zip)<small>ZH.txt + EN.txt 逐行对齐</small></div>
+        <div data-fmt="proj">工程存档 (.json)<small>存下来以后接着改</small></div>
+      </div>
+    </span>
+    <span class="file-btn"><button>载入存档</button><input type="file" id="projFile" accept=".json,application/json"></span>
+  </div>
+
+  <div id="out"></div>
+
+  <details class="about">
+    <summary>这个工具是怎么算的？（点开）</summary>
+    <p><b>切句。</b>中文按 。！？； 断句，英文按句末标点加后随的大写字母断句，并避开
+      Mr. / U.S. / e.g. 这类缩写。过短的碎片不会被丢掉，而是黏回上一句——不丢字是底线。</p>
+    <p><b>打分。</b>用 Gale &amp; Church (1991) 的长度对齐：译文长度与原文长度大致成正比，
+      偏差近似正态分布，于是「这段中文对不对得上这段英文」可以纯靠字数算出来。比例不写死，
+      由当前这篇文档自己估（英文字符总数 ÷ 中文字符总数）——不同文体差别很大。
+      在此之上加一层锚点：两侧都出现的数字与全大写缩写（<code>2022</code>、<code>WTO</code>），
+      对齐对了它们本来就该同时出现，吻合就加分。</p>
+    <p><b>搜索。</b>用动态规划在全篇范围内找总分最高的切分方式，允许的配对比例从 1:1 到
+      1:5 / 5:1（中文意合长句常对应好几句英文，反之亦然）。合并会扣一点分，免得算法
+      为了凑高分把句子无限往一起并。</p>
+    <p><b>兜底。</b>万一两侧句数悬殊到动态规划走不到终点，就退回逐句 1:1 配对、多出来的
+      一侧留单边空行，并在页面顶部标出来。<b>宁可给一个明显要修的结果，也绝不静默丢句。</b></p>
+    <p><b>关于语义对齐。</b>完整版还有一档用 bge-m3 跨语言向量直接比意思，遇到增译、删译、
+      语序大幅调整时更准。那需要调用模型服务，单个网页文件做不到，本版只有离线这一档。</p>
+  </details>
+
+  <div class="foot">
+    平行语料对齐工具 · 单文件网页版　|　不联网、不上传、不安装：打开这个文件后，
+    所有计算都在你自己的浏览器里完成，文本一个字都不会离开本机。<br>
+    建议用 <b>Chrome 或 Edge</b> 打开（已实测，Windows 与 macOS 表现一致）；Firefox 同样可用。
+    Safari 直接打开本地文件时对「下载」的支持较弱，若点导出没反应，换 Chrome 或 Edge 即可。
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* =========================================================================
+   一、对齐引擎
+   与服务器版 app/align.py 同一套算法，逐条移植到浏览器。
+   ========================================================================= */
+
+// 过短的碎片黏回上一句，绝不丢弃
+function keep(list, s, minLen, sep){
+  if(!s) return;
+  if(s.length > minLen || list.length === 0) list.push(s);
+  else list[list.length-1] = list[list.length-1] + (sep||"") + s;
+}
+
+function splitZh(text){
+  text = text.replace(/\n{2,}/g, "\n");
+  const parts = text.split(/([。！？；]+[”」』"']?)/);
+  const out = []; let buf = "";
+  for(const part of parts){
+    buf += part;
+    if(/[。！？；]/.test(part)){
+      keep(out, buf.trim().replace(/\s+/g, ""), 1, "");
+      buf = "";
+    }
+  }
+  keep(out, buf.trim().replace(/\s+/g, ""), 1, "");
+  return out;
+}
+
+const ABBR = ["Mr.","Mrs.","Ms.","Dr.","Prof.","U.S.","U.K.","etc.","i.e.","e.g.",
+              "No.","Vol.","vs.","St.","Jr.","Sr.","Inc.","Ltd."];
+
+function splitEn(text){
+  // 哨兵字符：缩写里的点先换成它，切完再换回来
+  const SENT = "\u0000";
+  text = text.replace(/\s*\n\s*/g, " ");
+  for(const a of ABBR) text = text.split(a).join(a.split(".").join(SENT));
+  // OCR/排版常把换行写成「. – 」，下一句以破折号开头就断不开，先把破折号去掉
+  text = text.replace(/([.!?]["'”’)\]]?)\s+[–—-]\s+(?=["'“(A-Z])/g, "$1 ");
+
+  // 手写扫描器而不是用正则后行断言 —— Safari 16.4 之前不支持 lookbehind，
+  // 那会让这个工具在一部分 Mac 上直接失效。
+  const raw = []; let start = 0;
+  for(let i = 0; i < text.length; i++){
+    const ch = text[i];
+    if(ch !== "." && ch !== "!" && ch !== "?") continue;
+    let j = i + 1;
+    while(j < text.length && "\"'”’)]".indexOf(text[j]) >= 0) j++;   // 吃掉右引号/右括号
+    let k = j;
+    while(k < text.length && /\s/.test(text[k])) k++;
+    if(k === j) continue;                                            // 后面没有空白，不是句末
+    const nxt = text[k];
+    if(!nxt) break;
+    if(!(/[A-Z]/.test(nxt) || "\"'“(".indexOf(nxt) >= 0)) continue;  // 下一句要以大写/引号起头
+    raw.push(text.slice(start, j));
+    start = k;
+  }
+  raw.push(text.slice(start));
+
+  const out = [];
+  for(let s of raw){
+    s = s.split(SENT).join(".").trim();
+    s = s.replace(/^[–—-]\s*/, "");
+    keep(out, s, 2, " ");
+  }
+  return out;
+}
+
+const CJK_RE = /[一-鿿㐀-䶿]/g;
+
+// 单文档：中英交替排版的一篇，按每段汉字占比分成两路
+function separateBilingual(text){
+  const zh = [], en = [];
+  for(const para of text.split(/\n\s*\n|\n/)){
+    const p = para.trim();
+    if(!p) continue;
+    const cjk = (p.match(CJK_RE) || []).length;
+    // 纯绝对阈值会把「Deng Xiaoping (邓小平) delivered…」整段划进中文。
+    // 绝对阈值只对短行生效，长段还须占比达标。
+    if(cjk > p.length * 0.2 || (cjk >= 3 && cjk > p.length * 0.1)) zh.push(p);
+    else en.push(p);
+  }
+  return [zh.join("\n"), en.join("\n")];
+}
+
+const ALIGN_TYPES = [[1,1],[1,2],[2,1],[1,3],[3,1],[2,2],
+                     [1,4],[4,1],[2,3],[3,2],[1,5],[5,1]];
+const ANCHOR_RE = /[0-9]+(?:[.,][0-9]+)?|[A-Z]{2,}/g;
+const GC_VAR = 6.8;                        // Gale-Church 的方差常数（按字符计）
+
+function offlineScorer(zhSents, enSents){
+  const zhLen = zhSents.map(s => s.length);
+  const enLen = enSents.map(s => s.length);
+  const zhSum = zhLen.reduce((a,b)=>a+b, 0);
+  const enSum = enLen.reduce((a,b)=>a+b, 0);
+  const ratio = zhSum ? enSum / zhSum : 1.7;
+  const zc = [0], ec = [0];
+  for(const l of zhLen) zc.push(zc[zc.length-1] + l);
+  for(const l of enLen) ec.push(ec[ec.length-1] + l);
+  const za = zhSents.map(s => new Set(s.match(ANCHOR_RE) || []));
+  const ea = enSents.map(s => new Set(s.match(ANCHOR_RE) || []));
+
+  return function(a0, a1, b0, b1){
+    const la = zc[a1] - zc[a0], lb = ec[b1] - ec[b0];
+    if(la <= 0 || lb <= 0) return 0;
+    const delta = (lb - la * ratio) / Math.sqrt(la * GC_VAR * ratio + 1e-9);
+    let s = Math.exp(-0.5 * Math.min(delta * delta, 36));
+    const A = new Set(), B = new Set();
+    for(let i = a0; i < a1; i++) za[i].forEach(v => A.add(v));
+    for(let i = b0; i < b1; i++) ea[i].forEach(v => B.add(v));
+    if(A.size || B.size){
+      let inter = 0;
+      A.forEach(v => { if(B.has(v)) inter++; });
+      const uni = A.size + B.size - inter;
+      s += 0.15 * (inter / Math.max(uni, 1));
+    }
+    return Math.min(s, 1);
+  };
+}
+
+function dpAlign(sim, n, m){
+  const NEG = -1e9, W = m + 1;
+  const dp = new Float64Array((n+1) * W).fill(NEG);
+  const move = new Int8Array((n+1) * W).fill(-1);
+  dp[0] = 0;
+  for(let i = 0; i <= n; i++){
+    for(let j = 0; j <= m; j++){
+      const cur = dp[i*W + j];
+      if(cur === NEG) continue;
+      for(let k = 0; k < ALIGN_TYPES.length; k++){
+        const da = ALIGN_TYPES[k][0], db = ALIGN_TYPES[k][1];
+        const ni = i + da, nj = j + db;
+        if(ni > n || nj > m) continue;
+        const penalty = (da === 1 && db === 1) ? 0 : -0.02 * (da + db - 2);
+        const score = cur + sim(i, ni, j, nj) + penalty;
+        if(score > dp[ni*W + nj]){ dp[ni*W + nj] = score; move[ni*W + nj] = k; }
+      }
+    }
+  }
+  const beads = [];
+  let i = n, j = m;
+  while((i > 0 || j > 0) && move[i*W + j] >= 0){
+    const k = move[i*W + j];
+    const pi = i - ALIGN_TYPES[k][0], pj = j - ALIGN_TYPES[k][1];
+    beads.push({zh:[pi,i], en:[pj,j], type:`${i-pi}:${j-pj}`,
+                score: Math.round(sim(pi,i,pj,j) * 1000) / 1000});
+    i = pi; j = pj;
+  }
+  beads.reverse();
+  return beads;
+}
+
+// DP 走不到终点时的兜底：逐句 1:1，多出的一侧留单边空行，永不丢句
+function fallbackBeads(n, m){
+  const beads = []; let i = 0, j = 0;
+  while(i < n || j < m){
+    if(i < n && j < m){ beads.push({zh:[i,i+1], en:[j,j+1], type:"1:1", score:0}); i++; j++; }
+    else if(i < n){ beads.push({zh:[i,i+1], en:[j,j], type:"1:0", score:0}); i++; }
+    else { beads.push({zh:[i,i], en:[j,j+1], type:"0:1", score:0}); j++; }
+  }
+  return beads;
+}
+
+const MAX_DP_CELLS = 2000000;
+
+function align(zhText, enText){
+  const zhSents = splitZh(zhText);
+  const enSents = splitEn(enText);
+  const n = zhSents.length, m = enSents.length;
+  if(n === 0 && m === 0) return {rows:[], fallback:false, n:0, m:0};
+  if(n * m > MAX_DP_CELLS){
+    throw new Error(`文档过长（中文 ${n} 句 × 英文 ${m} 句），超出单次对齐上限，请分段后再对齐。`);
+  }
+  let beads, fb = false;
+  if(n === 0 || m === 0){ beads = fallbackBeads(n, m); fb = true; }
+  else {
+    beads = dpAlign(offlineScorer(zhSents, enSents), n, m);
+    if(!beads.length){ beads = fallbackBeads(n, m); fb = true; }
+  }
+  const rows = beads.map(b => ({
+    zh: zhSents.slice(b.zh[0], b.zh[1]).join(""),
+    en: enSents.slice(b.en[0], b.en[1]).join(" "),
+    score: b.score, type: b.type
+  }));
+  return {rows, fallback: fb, n, m};
+}
+
+/* =========================================================================
+   二、界面状态
+   ========================================================================= */
+let ROWS = [];                 // [{zh, en, score, type}]
+let SEL = new Set();           // 选中的行号
+let UNDO = [], REDO = [];
+let ONLY_BAD = false;
+let MODE = "double";
+let FALLBACK = false;
+
+const $ = s => document.querySelector(s);
+const $$ = s => Array.from(document.querySelectorAll(s));
+
+function toast(msg){
+  const t = $("#toast");
+  t.textContent = msg; t.classList.add("on");
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 2600);
+}
+function esc(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function snapshot(){
+  UNDO.push(JSON.stringify(ROWS));
+  if(UNDO.length > 80) UNDO.shift();
+  REDO.length = 0;
+}
+
+/* ---- 渲染 ---- */
+function render(){
+  const out = $("#out");
+  if(!ROWS.length){
+    out.innerHTML = `<div class="empty">还没有对齐结果。<br>把中英文粘进上面的框，点「开始对齐」。<br>
+      不知道从哪下手，可以先点「载入示例」看一眼。</div>`;
+    $("#statBar").style.display = "none";
+    $("#editBar").style.display = "none";
+    return;
+  }
+  $("#statBar").style.display = "flex";
+  $("#editBar").style.display = "flex";
+
+  const q = $("#findBox").value.trim();
+  const hl = txt => {
+    const safe = esc(txt);
+    if(!q) return safe;
+    try{
+      return safe.replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"), "gi"),
+                          mm => `<mark>${mm}</mark>`);
+    }catch(e){ return safe; }
+  };
+
+  let html = `<table><thead><tr>
+      <th class="num">#</th><th>中文</th><th>English</th><th style="width:60px;text-align:center">得分</th>
+    </tr></thead><tbody>`;
+  ROWS.forEach((r, i) => {
+    const bad = r.score < 0.45, mid = r.score >= 0.45 && r.score < 0.7;
+    if(ONLY_BAD && !bad && !mid) return;
+    const cls = [SEL.has(i) ? "sel" : "", bad ? "r-lo" : (mid ? "r-mid" : "")].join(" ").trim();
+    const scls = bad ? "s-lo" : (mid ? "s-mid" : "s-hi");
+    html += `<tr class="${cls}" data-i="${i}">
+      <td class="num" title="点击选中本行；按住 Shift 点另一行可选一段">${i+1}</td>
+      <td><div class="cell zh" contenteditable="true" spellcheck="false" data-f="zh" data-i="${i}">${hl(r.zh)}</div></td>
+      <td><div class="cell en" contenteditable="true" spellcheck="false" data-f="en" data-i="${i}">${hl(r.en)}</div></td>
+      <td class="sc ${scls}">${r.score.toFixed(2)}</td>
+    </tr>`;
+  });
+  html += "</tbody></table>";
+  out.innerHTML = html;
+
+  const scores = ROWS.map(r => r.score);
+  const nBad = scores.filter(s => s < 0.7).length;
+  $("#nRows").textContent = ROWS.length;
+  $("#nZh").textContent = ROWS.filter(r => r.zh.trim()).length;
+  $("#nEn").textContent = ROWS.filter(r => r.en.trim()).length;
+  $("#avgSc").textContent = scores.length
+    ? (scores.reduce((a,b)=>a+b,0) / scores.length).toFixed(2) : "—";
+  $("#nBad").textContent = nBad;
+  save();
+}
+
+/* ---- 单元格编辑 ---- */
+function caretOffset(el){
+  const sel = window.getSelection();
+  if(!sel || !sel.rangeCount) return null;
+  const r = sel.getRangeAt(0);
+  const pre = r.cloneRange();
+  pre.selectNodeContents(el);
+  pre.setEnd(r.endContainer, r.endOffset);
+  return pre.toString().length;
+}
+
+document.addEventListener("input", ev => {
+  const c = ev.target.closest && ev.target.closest(".cell");
+  if(!c) return;
+  ROWS[+c.dataset.i][c.dataset.f] = c.innerText;
+  save();
+});
+
+document.addEventListener("focusin", ev => {
+  const c = ev.target.closest && ev.target.closest(".cell");
+  if(c) snapshot();                       // 进一个格子存一个撤销点
+});
+
+document.addEventListener("keydown", ev => {
+  const c = ev.target.closest && ev.target.closest(".cell");
+  if(!c) return;
+  if(ev.key === "Enter"){                 // 光标处拆成两行
+    ev.preventDefault();
+    const i = +c.dataset.i, f = c.dataset.f;
+    const off = caretOffset(c);
+    if(off == null) return;
+    const txt = c.innerText;
+    snapshot();
+    const row = ROWS[i];
+    const nr = {zh:"", en:"", score:0, type:"手动"};
+    nr[f] = txt.slice(off);
+    row[f] = txt.slice(0, off);
+    ROWS.splice(i + 1, 0, nr);
+    SEL.clear();
+    render();
+    toast("已在光标处拆分");
+  }
+});
+
+/* ---- 选行 ---- */
+let lastClicked = null;
+document.addEventListener("click", ev => {
+  const n = ev.target.closest && ev.target.closest("td.num");
+  if(!n) return;
+  const i = +n.parentElement.dataset.i;
+  if(ev.shiftKey && lastClicked !== null){
+    const [a, b] = [Math.min(lastClicked, i), Math.max(lastClicked, i)];
+    for(let k = a; k <= b; k++) SEL.add(k);
+  }else{
+    if(SEL.has(i)) SEL.delete(i); else SEL.add(i);
+    lastClicked = i;
+  }
+  render();
+});
+
+/* ---- 行操作 ---- */
+function selSorted(){ return Array.from(SEL).sort((a,b) => a-b); }
+
+const OPS = {
+  undo(){
+    if(!UNDO.length) return toast("没有可撤销的了");
+    REDO.push(JSON.stringify(ROWS));
+    ROWS = JSON.parse(UNDO.pop()); SEL.clear(); render(); toast("已撤销");
+  },
+  redo(){
+    if(!REDO.length) return toast("没有可重做的了");
+    UNDO.push(JSON.stringify(ROWS));
+    ROWS = JSON.parse(REDO.pop()); SEL.clear(); render(); toast("已重做");
+  },
+  merge(){
+    const s = selSorted();
+    if(s.length < 2) return toast("先选中两行以上（点行号）");
+    for(let k = 1; k < s.length; k++){
+      if(s[k] !== s[k-1] + 1) return toast("只能合并相邻的行");
+    }
+    snapshot();
+    const merged = {
+      zh: s.map(i => ROWS[i].zh).filter(Boolean).join(""),
+      en: s.map(i => ROWS[i].en).filter(Boolean).join(" "),
+      score: 0, type: "手动"
+    };
+    ROWS.splice(s[0], s.length, merged);
+    SEL.clear(); render(); toast(`已合并 ${s.length} 行`);
+  },
+  up(){
+    const s = selSorted();
+    if(!s.length || s[0] === 0) return toast("选中的行已在最上面");
+    snapshot();
+    for(const i of s){ const t = ROWS[i-1]; ROWS[i-1] = ROWS[i]; ROWS[i] = t; }
+    SEL = new Set(s.map(i => i-1)); render();
+  },
+  down(){
+    const s = selSorted();
+    if(!s.length || s[s.length-1] === ROWS.length-1) return toast("选中的行已在最下面");
+    snapshot();
+    for(let k = s.length-1; k >= 0; k--){
+      const i = s[k]; const t = ROWS[i+1]; ROWS[i+1] = ROWS[i]; ROWS[i] = t;
+    }
+    SEL = new Set(s.map(i => i+1)); render();
+  },
+  blank(){
+    const s = selSorted();
+    const at = s.length ? s[s.length-1] + 1 : ROWS.length;
+    snapshot();
+    ROWS.splice(at, 0, {zh:"", en:"", score:0, type:"手动"});
+    SEL.clear(); render(); toast("已插入空行");
+  },
+  del(){
+    const s = selSorted();
+    if(!s.length) return toast("先点行号选中要删的行");
+    snapshot();
+    for(let k = s.length-1; k >= 0; k--) ROWS.splice(s[k], 1);
+    SEL.clear(); render(); toast(`已删除 ${s.length} 行（可撤销）`);
+  },
+  onlybad(){
+    ONLY_BAD = !ONLY_BAD;
+    render();
+    toast(ONLY_BAD ? "只显示得分偏低的行" : "显示全部行");
+  }
+};
+
+$("#editBar").addEventListener("click", ev => {
+  const b = ev.target.closest("button[data-op]");
+  if(b) OPS[b.dataset.op]();
+});
+$("#findBox").addEventListener("input", render);
+
+/* =========================================================================
+   三、导出
+   ========================================================================= */
+function download(blob, name){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1200);
+}
+function baseName(){
+  const n = (window.SRC_NAME || "aligned").replace(/\.[^.]+$/, "");
+  return n.replace(/[\\/:*?"<>|\n\r\t]/g, "").slice(0, 60) || "aligned";
+}
+function pairs(){
+  return ROWS.map(r => ({zh:(r.zh||"").trim(), en:(r.en||"").trim(), score:r.score}));
+}
+
+/* ---- ZIP（仅 store，不压缩；足够打包几个文本文件）---- */
+const CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for(let n = 0; n < 256; n++){
+    let c = n;
+    for(let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(u8){
+  let c = 0xFFFFFFFF;
+  for(let i = 0; i < u8.length; i++) c = CRC_TABLE[(c ^ u8[i]) & 0xFF] ^ (c >>> 8);
+  return (c ^ 0xFFFFFFFF) >>> 0;
+}
+function makeZip(files){
+  const enc = new TextEncoder();
+  const parts = [], central = [];
+  let offset = 0;
+  for(const f of files){
+    const nb = enc.encode(f.name), data = f.data, crc = crc32(data), size = data.length;
+    const lf = new Uint8Array(30 + nb.length), dv = new DataView(lf.buffer);
+    dv.setUint32(0, 0x04034b50, true); dv.setUint16(4, 20, true);
+    dv.setUint16(6, 0x0800, true);                  // 文件名按 UTF-8
+    dv.setUint32(14, crc, true); dv.setUint32(18, size, true); dv.setUint32(22, size, true);
+    dv.setUint16(26, nb.length, true);
+    lf.set(nb, 30);
+    parts.push(lf, data);
+
+    const cd = new Uint8Array(46 + nb.length), cv = new DataView(cd.buffer);
+    cv.setUint32(0, 0x02014b50, true); cv.setUint16(4, 20, true); cv.setUint16(6, 20, true);
+    cv.setUint16(8, 0x0800, true);
+    cv.setUint32(16, crc, true); cv.setUint32(20, size, true); cv.setUint32(24, size, true);
+    cv.setUint16(28, nb.length, true); cv.setUint32(42, offset, true);
+    cd.set(nb, 46);
+    central.push(cd);
+    offset += lf.length + size;
+  }
+  const cdSize = central.reduce((a, b) => a + b.length, 0);
+  const eocd = new Uint8Array(22), ev = new DataView(eocd.buffer);
+  ev.setUint32(0, 0x06054b50, true);
+  ev.setUint16(8, files.length, true); ev.setUint16(10, files.length, true);
+  ev.setUint32(12, cdSize, true); ev.setUint32(16, offset, true);
+  return new Blob([...parts, ...central, eocd], {type:"application/zip"});
+}
+
+/* ---- 各格式 ---- */
+function xmlEsc(s){
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+function toTmx(ps){
+  const tus = ps.map(p =>
+`    <tu>
+      <tuv xml:lang="zh-CN"><seg>${xmlEsc(p.zh)}</seg></tuv>
+      <tuv xml:lang="en-US"><seg>${xmlEsc(p.en)}</seg></tuv>
+    </tu>`).join("\n");
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<tmx version="1.4">
+  <header creationtool="平行语料对齐工具" creationtoolversion="1.0" segtype="sentence" o-tmf="plain" adminlang="en" srclang="zh-CN" datatype="plaintext"/>
+  <body>
+${tus}
+  </body>
+</tmx>
+`;
+}
+
+// RTF：与 ABBYY Aligner「Bilingual RTF」同版式，单表双列，CJK 用 \uN\'3f 转义
+const RTF_HEAD = "{\\rtf1 \\deff1{\\fonttbl {\\f1\\fcharset134\\cpg936 SimSun;}\n}\n" +
+  "{\\colortbl }\n{\\stylesheet }\n{\\*\\listtable }\n{\\*\\listoverridetable }\n\\lnbrkrule\n\\sectd\n";
+const RTF_CELLS = "\\trgaph100\\trpaddl100\\trpaddfl3\\trpaddr100\\trpaddfr3" +
+  "\\clbrdrt\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10" +
+  "\\clbrdrr\\brdrs\\brdrw10\\cellx4731 " +
+  "\\clbrdrt\\brdrs\\brdrw10\\clbrdrb\\brdrs\\brdrw10\\clbrdrl\\brdrs\\brdrw10" +
+  "\\clbrdrr\\brdrs\\brdrw10\\cellx9462 ";
+function rtfEsc(s){
+  let out = "";
+  for(const ch of String(s||"").replace(/[\n\r]/g, " ")){
+    const o = ch.codePointAt(0);
+    if(ch === "\\" || ch === "{" || ch === "}") out += "\\" + ch;
+    else if(o < 128) out += ch;
+    else out += "\\u" + (o > 32767 ? o - 65536 : o) + "\\'3f";
+  }
+  return out;
+}
+function toRtf(ps){
+  const rows = ps.map(p =>
+    `\\trowd ${RTF_CELLS}\\intbl\\itap1\n` +
+    `\\pard\\plain\\intbl\\itap1\\plain \\fs24 ${rtfEsc(p.zh)}\\cell \n` +
+    `\\pard\\plain\\intbl\\itap1\\plain \\fs24 ${rtfEsc(p.en)}\\cell \n` +
+    `\\trowd ${RTF_CELLS}\\row \n`).join("");
+  return RTF_HEAD + rows + "}\n";
+}
+
+// 最小可用 xlsx：内联字符串，省掉 sharedStrings
+function toXlsx(ps){
+  const enc = new TextEncoder();
+  const cell = (ref, v, isNum) => isNum
+    ? `<c r="${ref}"><v>${v}</v></c>`
+    : `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEsc(v)}</t></is></c>`;
+  let rows = `<row r="1">${cell("A1","序号")}${cell("B1","中文")}${cell("C1","English")}${cell("D1","得分")}</row>`;
+  ps.forEach((p, i) => {
+    const r = i + 2;
+    rows += `<row r="${r}">${cell("A"+r, i+1, true)}${cell("B"+r, p.zh)}${cell("C"+r, p.en)}` +
+            `${cell("D"+r, (p.score||0).toFixed(2), true)}</row>`;
+  });
+  const sheet = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+<cols><col min="1" max="1" width="6"/><col min="2" max="2" width="52" customWidth="1"/>
+<col min="3" max="3" width="62" customWidth="1"/><col min="4" max="4" width="8"/></cols>
+<sheetData>${rows}</sheetData></worksheet>`;
+  const files = [
+    {name:"[Content_Types].xml", data: enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+<Default Extension="xml" ContentType="application/xml"/>
+<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+</Types>`)},
+    {name:"_rels/.rels", data: enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+</Relationships>`)},
+    {name:"xl/workbook.xml", data: enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+<sheets><sheet name="对齐" sheetId="1" r:id="rId1"/></sheets></workbook>`)},
+    {name:"xl/_rels/workbook.xml.rels", data: enc.encode(`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+</Relationships>`)},
+    {name:"xl/worksheets/sheet1.xml", data: enc.encode(sheet)}
+  ];
+  return makeZip(files);
+}
+
+const EXPORT = {
+  tmx(){ download(new Blob([toTmx(pairs())], {type:"application/x-tmx+xml"}), baseName()+".tmx"); },
+  rtf(){ download(new Blob([toRtf(pairs())], {type:"application/rtf"}), baseName()+"_双语对照.rtf"); },
+  xlsx(){ download(toXlsx(pairs()), baseName()+".xlsx"); },
+  csv(){
+    const q = s => '"' + String(s||"").replace(/"/g,'""') + '"';
+    const lines = ["序号,中文,English,得分"].concat(
+      pairs().map((p,i) => [i+1, q(p.zh), q(p.en), (p.score||0).toFixed(2)].join(",")));
+    download(new Blob(["﻿" + lines.join("\r\n")], {type:"text/csv;charset=utf-8"}),
+             baseName()+".csv");
+  },
+  lr(){
+    const t = ["zh\ten"].concat(pairs().map(p => `${p.zh}\t${p.en}`)).join("\n");
+    download(new Blob([t], {type:"text/plain;charset=utf-8"}), baseName()+"_左右对照.txt");
+  },
+  stack(){
+    const t = pairs().map(p => `${p.zh}\n${p.en}`).join("\n\n");
+    download(new Blob([t], {type:"text/plain;charset=utf-8"}), baseName()+"_上下对照.txt");
+  },
+  bfsu(){
+    const enc = new TextEncoder();
+    const zh = [], en = [];
+    for(const p of pairs()){
+      const z = p.zh.replace(/\n/g," ").trim(), e = p.en.replace(/\n/g," ").trim();
+      if(!z || !e) continue;                 // 只留完整句对，两个文件才逐行对得上
+      zh.push(z); en.push(e);
+    }
+    if(!zh.length) return toast("没有完整的中英句对可导出");
+    download(makeZip([
+      {name: baseName()+".ZH.txt", data: enc.encode(zh.join("\n"))},
+      {name: baseName()+".EN.txt", data: enc.encode(en.join("\n"))}
+    ]), baseName()+"_bfsu.zip");
+    toast(`已导出 ${zh.length} 对完整句对（单边行已跳过）`);
+  },
+  proj(){
+    const d = {v:1, name: window.SRC_NAME || "", mode: MODE, rows: ROWS,
+               zh: $("#zhIn").value, en: $("#enIn").value};
+    download(new Blob([JSON.stringify(d)], {type:"application/json"}), baseName()+"_工程存档.json");
+  }
+};
+
+$("#expBtn").addEventListener("click", ev => {
+  ev.stopPropagation();
+  $("#expMenu").classList.toggle("on");
+});
+document.addEventListener("click", () => $("#expMenu").classList.remove("on"));
+$("#expMenu").addEventListener("click", ev => {
+  const d = ev.target.closest("div[data-fmt]");
+  if(!d) return;
+  if(!ROWS.length) return toast("还没有对齐结果");
+  $("#expMenu").classList.remove("on");
+  try{ EXPORT[d.dataset.fmt](); }
+  catch(e){ toast("导出出错：" + e.message); }
+});
+
+/* =========================================================================
+   四、输入 / 运行 / 自动保存
+   ========================================================================= */
+function setMode(m){
+  MODE = m;
+  $$(".tab").forEach(t => t.classList.toggle("on", t.dataset.tab === m));
+  const single = m === "single";
+  $("#inputCols").classList.toggle("one", single);
+  $("#fldEn").style.display = single ? "none" : "";
+  $("#enFileWrap").style.display = single ? "none" : "";
+  $("#swapBtn").style.display = single ? "none" : "";
+  $("#fldZh").querySelector("label").textContent = single ? "中英交替的整篇文本" : "中文原文";
+  $("#zhIn").placeholder = single
+    ? "粘贴中英交替排版的文本，程序按每段的汉字比例自动分成中文流和英文流"
+    : "粘贴中文，或用下面的按钮导入 .txt 文件";
+  $("#modeHint").textContent = single
+    ? "适合「一段中文、一段英文」交替排版的材料。夹杂大量英文的中文段可能判错，对齐后在表格里手工调整即可。"
+    : "中文和英文各自成篇，分别粘进两栏。段落顺序应大致对应。";
+}
+$$(".tab").forEach(t => t.addEventListener("click", () => setMode(t.dataset.tab)));
+
+function readFile(input, cb){
+  input.addEventListener("change", () => {
+    const f = input.files[0];
+    if(!f) return;
+    const r = new FileReader();
+    r.onload = () => { cb(r.result, f.name); input.value = ""; };
+    r.readAsText(f, "utf-8");
+  });
+}
+readFile($("#zhFile"), (txt, name) => { $("#zhIn").value = txt; window.SRC_NAME = name; toast("已载入 " + name); });
+readFile($("#enFile"), (txt) => { $("#enIn").value = txt; toast("已载入英文"); });
+readFile($("#projFile"), txt => {
+  try{
+    const d = JSON.parse(txt);
+    if(!d.rows) throw new Error("不是本工具的工程存档");
+    snapshot();
+    ROWS = d.rows; window.SRC_NAME = d.name || "";
+    $("#zhIn").value = d.zh || ""; $("#enIn").value = d.en || "";
+    setMode(d.mode || "double");
+    SEL.clear(); render();
+    toast(`已载入存档，共 ${ROWS.length} 行`);
+  }catch(e){ toast("存档读取失败：" + e.message); }
+});
+
+$("#swapBtn").addEventListener("click", () => {
+  const a = $("#zhIn").value; $("#zhIn").value = $("#enIn").value; $("#enIn").value = a;
+  toast("已调换中英两栏");
+});
+$("#clearBtn").addEventListener("click", () => {
+  if(ROWS.length && !confirm("清空输入和当前的对齐结果？")) return;
+  $("#zhIn").value = ""; $("#enIn").value = "";
+  ROWS = []; SEL.clear(); UNDO = []; REDO = [];
+  $("#warnBox").innerHTML = "";
+  render();
+});
+
+$("#runBtn").addEventListener("click", () => {
+  let zhText = $("#zhIn").value.trim(), enText = $("#enIn").value.trim();
+  if(MODE === "single"){
+    if(!zhText) return toast("先粘贴要对齐的文本");
+    [zhText, enText] = separateBilingual(zhText);
+    if(!zhText || !enText){
+      return toast("没能从这篇文本里分出中英两路，请确认是中英交替排版的材料");
+    }
+  }else if(!zhText || !enText){
+    return toast("中英两栏都要填");
+  }
+  const btn = $("#runBtn");
+  btn.disabled = true; btn.textContent = "对齐中…";
+  setTimeout(() => {                       // 让按钮先把状态画出来
+    try{
+      const t0 = performance.now();
+      const res = align(zhText, enText);
+      ROWS = res.rows; FALLBACK = res.fallback;
+      SEL.clear(); UNDO = []; REDO = []; ONLY_BAD = false;
+      $("#warnBox").innerHTML = FALLBACK
+        ? `<div class="warn">这一批没能算出最优对齐（中文 ${res.n} 句、英文 ${res.m} 句，
+           两侧句数相差太多），已退回逐句配对、多的一侧留空行。<b>内容一句都没丢</b>，
+           但需要手工调整。常见原因是一侧漏粘了内容，或断句符号缺失。</div>`
+        : "";
+      render();
+      toast(`对齐完成：${ROWS.length} 行，用时 ${Math.round(performance.now()-t0)} 毫秒`);
+    }catch(e){
+      toast(e.message);
+    }finally{
+      btn.disabled = false; btn.textContent = "开始对齐";
+    }
+  }, 30);
+});
+
+/* ---- 自动保存（localStorage 在 file:// 下个别浏览器会禁用，静默跳过）---- */
+const KEY = "parallelAligner.v1";
+let saveTimer = null;
+function save(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    try{
+      localStorage.setItem(KEY, JSON.stringify({
+        rows: ROWS, name: window.SRC_NAME || "", mode: MODE,
+        zh: $("#zhIn").value, en: $("#enIn").value, t: Date.now()
+      }));
+    }catch(e){ /* 配额满或被禁用，不影响使用 */ }
+  }, 700);
+}
+function restore(){
+  let d = null;
+  try{ d = JSON.parse(localStorage.getItem(KEY) || "null"); }catch(e){ return; }
+  if(!d || !d.rows || !d.rows.length) return;
+  const when = new Date(d.t || Date.now()).toLocaleString("zh-CN");
+  const box = document.createElement("div");
+  box.className = "warn";
+  box.innerHTML = `上次的工作（${d.rows.length} 行，${when}）还留着。
+    <button id="doRestore" style="margin-left:10px">恢复继续</button>
+    <button id="noRestore">丢弃</button>`;
+  $("#warnBox").appendChild(box);
+  box.querySelector("#doRestore").onclick = () => {
+    ROWS = d.rows; window.SRC_NAME = d.name || "";
+    $("#zhIn").value = d.zh || ""; $("#enIn").value = d.en || "";
+    setMode(d.mode || "double");
+    box.remove(); render(); toast("已恢复");
+  };
+  box.querySelector("#noRestore").onclick = () => {
+    try{ localStorage.removeItem(KEY); }catch(e){}
+    box.remove();
+  };
+}
+
+/* ---- 示例 ---- */
+const DEMO_ZH = `中国共产党是中国工人阶级的先锋队，同时是中国人民和中华民族的先锋队，是中国特色社会主义事业的领导核心。党的最高理想和最终目标是实现共产主义。马克思列宁主义揭示了人类社会历史发展的规律，它的基本原理是正确的，具有强大的生命力。`;
+const DEMO_EN = `The Communist Party of China is the vanguard of the Chinese working class, the Chinese people, and the Chinese nation. It is the leadership core for the cause of socialism with Chinese characteristics. The Party’s highest ideal and ultimate goal is the realization of communism. Marxism-Leninism reveals the laws governing the development of the history of human society. Its basic tenets are correct and have tremendous vitality.`;
+$("#demoBtn").addEventListener("click", () => {
+  setMode("double");
+  $("#zhIn").value = DEMO_ZH; $("#enIn").value = DEMO_EN;
+  window.SRC_NAME = "示例";
+  toast("示例已载入，点「开始对齐」看效果");
+});
+
+setMode("double");
+render();
+restore();
+</script>
+</body>
+</html>

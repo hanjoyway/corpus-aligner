@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>平行语料对齐工作台</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+{% if not desktop %}{# 桌面版可能整台机器都不联网，外链字体会把首屏卡住几秒 #}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Crimson+Pro:wght@600;700&family=DM+Sans:wght@400;500;600;700&family=Noto+Serif+SC:wght@400;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+{% endif %}
+<style>
+  :root{--bg-deep:#1c1917;--bg:#f4f1ec;--card:#fff;--hover:#f5f0ea;--stripe:#faf6f1;
+    --text:#1c1917;--text2:#78716c;--muted:#a8a29e;--accent:#b45830;--accent-hover:#9a4a28;
+    --accent-soft:#fef2ec;--gold:#d6a85f;--border:#e7e5e4;--border-l:#f0eeeb;
+    --hi:#16a34a;--hi-bg:#f0fdf4;--mid:#d6a85f;--mid-bg:#fffbeb;--lo:#dc2626;--lo-bg:#fef2f2;
+    --man:#0e7490;--man-bg:#ecfeff;
+    --radius:7px;--serif:'Crimson Pro','Noto Serif SC',serif;--zh:'Noto Serif SC',serif;
+    --body:'DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',monospace}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{font-family:var(--body);background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+  ::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-thumb{background:#d6d3d1;border-radius:4px}
+
+  .topbar{background:var(--bg-deep);height:56px;display:flex;align-items:center;padding:0 24px;gap:13px}
+  .brand{font-family:var(--serif);font-size:19px;font-weight:700;color:#faf8f4}
+  .back{margin-left:auto;font-size:13px;color:#a8a29e;text-decoration:none;border:1px solid #44403c;padding:6px 13px;border-radius:6px}
+  .back:hover{color:#e7e5e4;border-color:#78716c}
+  .wrap{max-width:1180px;margin:0 auto;padding:22px 24px 70px}
+
+  .inputs{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px}
+  .inbox{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .inbox h3{font-size:13px;font-weight:700;color:var(--text2);padding:10px 14px;border-bottom:1px solid var(--border-l);display:flex;align-items:center;gap:8px}
+  .inbox textarea{width:100%;height:200px;border:none;outline:none;padding:13px 14px;font-size:13.5px;line-height:1.7;resize:vertical;font-family:var(--zh)}
+  .inbox .filebtn{margin-left:auto;font-size:12px;color:#fff;background:var(--accent);cursor:pointer;font-weight:700;padding:5px 13px;border-radius:6px;display:inline-flex;align-items:center;gap:6px;box-shadow:0 1px 3px rgba(28,25,23,.12)}
+  .inbox .filebtn:hover{filter:brightness(1.07)}
+  .inbox .filebtn input{display:none}
+  .runbar{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+  .btn{padding:7px 16px;font-size:13px;font-weight:700;border:none;border-radius:var(--radius);cursor:pointer;font-family:var(--body)}
+  .btn-primary{background:var(--accent);color:#fff}.btn-primary:hover{background:var(--accent-hover)}
+  .hint{font-size:12.5px;color:var(--muted)}
+  .demo-link{font-size:12px;color:var(--accent);cursor:pointer;font-weight:600;border:none;background:none;font-family:var(--body)}
+  .seg{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden}
+  .seg button{padding:7px 16px;font-size:13px;border:none;background:#fff;color:var(--text2);cursor:pointer;font-family:var(--body);font-weight:600}
+  .seg button.active{background:var(--accent-soft);color:var(--accent)}
+  .findbox{font-size:12px;border:1px solid var(--border);border-radius:5px;padding:5px 9px;outline:none;width:130px;font-family:var(--body)}
+  .findbox:focus{border-color:var(--accent)}
+  mark{background:var(--gold);color:#3a2a12;padding:0 1px;border-radius:2px}
+  .proof-row{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border-l);align-items:flex-start}
+  .proof-no{width:34px;flex-shrink:0;font-family:var(--mono);font-size:11px;color:var(--muted);padding-top:4px;text-align:center}
+  .proof-img{flex:0 0 44%;border:1px solid var(--border);border-radius:6px;overflow:hidden;background:#faf8f4}
+  .proof-img img{width:100%;display:block;cursor:zoom-in}
+  .proof-txt{flex:1;min-height:120px;border:1px solid var(--border);border-radius:6px;padding:10px 12px;font-size:13px;line-height:1.7;font-family:var(--zh);outline:none;resize:vertical;white-space:pre-wrap}
+  .proof-txt:focus{border-color:var(--accent)}
+  .proof-row.failed .proof-txt{border-color:#d08a8a;background:rgba(208,49,63,.05)}
+  .proof-retry{margin-top:7px;font-size:10.5px;font-family:var(--body);color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:3px 6px;background:none;cursor:pointer;width:100%;line-height:1.3}
+  .proof-retry:hover{border-color:var(--accent);color:var(--accent)}
+  .proof-row.failed .proof-retry{color:#c4313f;border-color:#d08a8a}
+  .proof-retry .spin{width:9px;height:9px;border-width:1.5px}
+  .proof-vlm{margin-top:4px;color:var(--muted)}
+  .proof-vlm:hover{border-color:var(--accent);color:var(--accent)}
+
+  .toolbar{display:flex;align-items:center;gap:3px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:7px 10px;margin-bottom:6px;flex-wrap:wrap;position:sticky;top:8px;z-index:5;box-shadow:0 1px 3px rgba(28,25,23,.05)}
+  .tbtn{font-size:12.5px;font-weight:600;color:var(--text2);background:none;border:1px solid transparent;border-radius:5px;padding:6px 11px;cursor:pointer;font-family:var(--body)}
+  .tbtn:hover{background:var(--hover);border-color:var(--border)}
+  .tbtn:disabled{opacity:.4;cursor:default}
+  .tbtn.ticon{font-size:17px;line-height:1;padding:4px 9px;color:var(--text2)}
+  .tsep{width:1px;height:18px;background:var(--border);margin:0 5px}
+  .tstat{margin-left:auto;font-size:11.5px;color:var(--muted);font-family:var(--mono)}
+  .ophint{font-size:11.5px;color:var(--muted);margin:0 2px 12px}
+  .exp-wrap{position:relative;display:inline-block}
+  .exp-menu{display:none;position:absolute;top:30px;left:0;z-index:20;background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 6px 24px rgba(28,25,23,.16);min-width:200px;padding:5px}
+  .exp-menu.show{display:block}
+  .exp-menu div{font-size:12.5px;padding:8px 11px;border-radius:5px;cursor:pointer;color:var(--text2)}
+  .exp-menu div:hover{background:var(--hover);color:var(--text)}
+
+  .tbl{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+  .trow{display:flex;border-bottom:1px solid var(--border-l)}
+  .trow:last-child{border-bottom:none}
+  .trow.sel{background:var(--accent-soft)}
+  .tnum{width:40px;flex-shrink:0;text-align:center;padding:11px 4px;font-family:var(--mono);font-size:11px;color:var(--muted);border-right:1px solid var(--border-l);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .conf{width:8px;height:8px;border-radius:50%}
+  .cell{flex:1;min-width:0;padding:11px 14px;font-size:13.5px;line-height:1.75;border-right:1px solid var(--border-l);outline:none;white-space:pre-wrap;word-break:break-word}
+  .cell.zh{font-family:var(--zh)}
+  .cell.en{color:var(--text2);border-right:none}
+  .cell:focus{box-shadow:inset 0 0 0 2px var(--accent);border-radius:4px;background:#fff}
+  .cell.empty{color:var(--lo);font-style:italic;font-size:12px;min-height:20px}
+  .pagemark{color:#cfc8bf;font-size:10px;font-family:var(--mono);user-select:none}
+  .pgbtn{display:inline-block;font-size:10px;font-family:var(--mono);color:var(--accent);background:rgba(180,88,48,.08);border:1px solid rgba(180,88,48,.22);border-radius:10px;padding:1px 7px;cursor:zoom-in;white-space:nowrap}
+  .pgbtn:hover{background:var(--accent);color:#fff}
+  .lightbox{position:fixed;inset:0;background:rgba(20,18,16,.9);display:none;align-items:center;justify-content:center;z-index:200;cursor:zoom-out;padding:26px}
+  .lightbox.show{display:flex}
+  .lightbox img{max-width:96%;max-height:94%;background:#fff;border-radius:4px;box-shadow:0 12px 44px rgba(0,0,0,.55)}
+  .lightbox .lbcap{position:absolute;top:14px;left:0;right:0;text-align:center;color:#e7e5e4;font-size:13px;font-family:var(--mono)}
+  .tmeta{width:70px;flex-shrink:0;padding:11px 8px;text-align:right;font-family:var(--mono);font-size:10.5px;color:var(--muted);border-left:1px solid var(--border-l)}
+  .row-hi{background:var(--hi-bg)} .row-mid{background:var(--mid-bg)} .row-lo{background:var(--lo-bg)} .row-man{background:var(--man-bg)}
+  .trow.aibad{background:var(--lo-bg);box-shadow:inset 3px 0 0 var(--lo)}
+  .trow.sel.aibad,.trow.sel.row-hi,.trow.sel.row-mid,.trow.sel.row-lo,.trow.sel.row-man{background:var(--accent-soft)}
+  .aibad-tag{display:inline-block;font-size:9px;font-weight:700;color:#fff;background:var(--lo);padding:0 5px;border-radius:7px}
+  .ai-note{color:var(--lo);font-size:10px;margin-top:3px;font-family:var(--body)}
+
+  .legend{display:flex;gap:14px;margin:10px 2px 0;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+  .legend span{display:flex;align-items:center;gap:5px}.dot{width:9px;height:9px;border-radius:50%}
+  .err{background:var(--lo-bg);border:1px solid #fca5a5;color:var(--lo);padding:11px 15px;border-radius:var(--radius);font-size:13px;margin-bottom:12px}
+  .warn{background:var(--mid-bg);border:1px solid #ead9a6;color:#92750f;padding:11px 15px;border-radius:var(--radius);font-size:13px;margin-bottom:12px;line-height:1.6}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+
+  /* ---- 流程条 V1：极简连线 stepper（无边框 / 无填充块，细连线穿过序号圆点） ---- */
+  .flow{display:flex;margin-bottom:18px}
+  .step{flex:1;text-align:center;position:relative;padding:2px 10px 0;background:none;border:none;cursor:pointer;font-family:var(--body)}
+  .step:not(:first-child)::before{content:'';position:absolute;top:12px;left:-50%;width:100%;height:1.5px;background:var(--border);z-index:0}
+  .sn{position:relative;z-index:1;margin:0 auto 8px;width:22px;height:22px;border-radius:50%;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;font-family:var(--mono);border:1.5px solid var(--border);color:var(--muted);background:var(--bg)}
+  .st{display:block;font-weight:700;font-size:13px;color:var(--text);margin-bottom:3px}
+  .sd{display:block;font-size:11.5px;color:var(--muted);line-height:1.5;padding:0 4px}
+  .step:hover .st{color:var(--accent)}
+  .step.active .sn{background:var(--accent);border-color:var(--accent);color:#fff}
+  .step.active .st{color:var(--accent)}
+  .step.done .sn{background:var(--hi);border-color:var(--hi);color:#fff}
+  .step.done .st{color:var(--text2)}
+
+  /* ---- 文件名 chip ---- */
+  .fchip{display:inline-flex;align-items:center;gap:9px;max-width:380px;background:var(--accent-soft);border:1px solid #f0d8c8;border-radius:6px;padding:6px 11px;font-size:12.5px;color:var(--accent);font-weight:600}
+  .fchip .fic{flex-shrink:0;font-size:10.5px;font-family:var(--mono);opacity:.8}
+  .fchip .fname{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .fchip .fx{cursor:pointer;color:var(--muted);font-weight:700;flex-shrink:0;font-size:14px;line-height:1}
+  .fchip .fx:hover{color:var(--accent)}
+
+  /* ---- 控件行 / 分组工具栏 ---- */
+  .ctlrow{display:flex;align-items:center;gap:14px;padding:13px 14px;flex-wrap:wrap}
+  .pageinp{font-size:12.5px;border:1px solid var(--border);border-radius:5px;padding:5px 8px;width:62px;font-family:var(--mono);outline:none}
+  .pageinp:focus{border-color:var(--accent)}
+  .field{font-size:12.5px;color:var(--text2);display:inline-flex;align-items:center;gap:6px}
+  .iobar,.ptools{display:flex;align-items:center;gap:4px;background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:8px 12px;flex-wrap:wrap}
+  .iobar{margin:0 0 18px}.ptools{margin:0 0 4px;border-left:none;border-right:none;border-bottom:none;border-radius:0;border-top:1px solid var(--border-l);background:var(--stripe)}
+  .tgrouplbl{font-size:11px;color:var(--muted);margin:0 4px 0 2px;font-weight:600}
+  .send-wrap{position:relative}
+  .send-btn{font-size:12.5px;font-weight:700;color:#fff!important;background:var(--accent);border:1px solid var(--accent);border-radius:6px;padding:7px 14px;cursor:pointer}
+  .send-btn:hover{background:var(--accent-hover)}
+  .send-menu{display:none;position:absolute;top:38px;left:0;z-index:30;background:#fff;border:1px solid var(--border);border-radius:var(--radius);box-shadow:0 8px 28px rgba(28,25,23,.16);width:300px;padding:6px}
+  .send-menu.show{display:block}
+  .send-menu .opt{padding:9px 11px;border-radius:6px;cursor:pointer}
+  .send-menu .opt:hover{background:var(--hover)}
+  .send-menu .ot{font-size:13px;font-weight:700;color:var(--text)}
+  .send-menu .od{font-size:11.5px;color:var(--muted);margin-top:2px;line-height:1.45}
+  .send-menu .ostar{color:var(--accent);font-weight:700}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(180,88,48,.45)}100%{box-shadow:0 0 0 7px rgba(180,88,48,0)}}
+  .pulse{animation:pulse .9s ease-out 2}
+</style>
+</head>
+<body>
+  <header class="topbar">
+    <svg width="38" height="34" viewBox="0 0 76 76">
+      <rect x="2" y="2" width="72" height="72" rx="18" fill="#33302b" stroke="#4a443d" stroke-width="1.5"/>
+      <rect x="18" y="27" width="40" height="7" rx="3.5" fill="#b45830"/>
+      <rect x="18" y="42" width="28" height="7" rx="3.5" fill="#d6a85f"/>
+      <circle cx="54" cy="45.5" r="3.2" fill="#d6a85f"/>
+    </svg>
+    <span class="brand">平行语料对齐工作台</span>
+    {% if desktop %}
+    <a class="back" href="/settings">设置 · API Key</a>
+    <span class="back" id="modeTag" style="border-color:transparent"></span>
+    {% else %}
+    <a class="back" href="/">← 返回检索</a>
+    {% endif %}
+  </header>
+
+  <div class="wrap">
+    <div id="inputArea">
+      <div style="margin-bottom:13px;display:flex;align-items:center;gap:12px">
+        <span class="seg" id="docSeg">
+          <button data-doc="proof" class="active">OCR · 图文校对</button>
+          <button data-doc="double">双文档对齐</button>
+          <button data-doc="single">单文档对齐</button>
+        </span>
+        <span class="hint" id="tabHint"></span>
+        <span style="flex:1"></span>
+        <button class="demo-link" id="projImport" title="载入之前从「导出 → 工程存档」保存的 .json，接着上次的对齐继续改">导入工程 .json</button>
+        <input type="file" id="projFile" accept=".json" style="display:none">
+      </div>
+
+      <!-- 流程条（可点击，按 tab 动态渲染） -->
+      <div class="flow" id="flowBar"></div>
+
+      <!-- OCR · 图文校对 -->
+      <div class="inbox" id="proofInput" style="margin-bottom:18px">
+        <h3>① 选择扫描件 PDF<label class="filebtn">选择 PDF<input type="file" accept=".pdf" id="proofFile"></label></h3>
+        <div class="ctlrow">
+          <span id="proofFileName" class="hint">还没选 PDF — 点右上角「选择 PDF」开始</span>
+          <span class="field">起始页 <input id="proofStart" class="pageinp" type="number" value="1" min="1"></span>
+          <span class="field">结束页 <input id="proofEnd" class="pageinp" type="number" placeholder="末页"></span>
+          <button class="btn btn-primary" id="proofBtn">② 开始 OCR</button>
+          <span class="hint" id="proofProg"></span>
+        </div>
+        <div class="ptools" id="proofTools" style="display:none">
+          <span class="tgrouplbl">校对</span>
+          <button class="tbtn" id="proofClean">清洗（去 markdown）</button>
+          <button class="tbtn" id="proofRestore">还原</button>
+          <span class="tsep"></span>
+          <button class="tbtn" id="proofDownload">下载校对 txt</button>
+          <span class="tsep"></span>
+          <div class="send-wrap">
+            <button class="tbtn send-btn" id="sendBtn">→ 送入对齐 ▾</button>
+            <div class="send-menu" id="sendMenu">
+              <div class="opt" data-pfill="single"><div class="ot">单文档框 <span class="ostar">（推荐：一页里中英都有）</span></div><div class="od">每页中英混排选这个，系统自动分中 / 英两路。</div></div>
+              <div class="opt" data-pfill="zh"><div class="ot">中文框</div><div class="od">这份 PDF 是纯中文，去和另一份英文配对。</div></div>
+              <div class="opt" data-pfill="en"><div class="ot">英文框</div><div class="od">这份 PDF 是纯英文，去和另一份中文配对。</div></div>
+            </div>
+          </div>
+          <span class="tstat" id="proofCleanInfo"></span>
+        </div>
+        <div id="proofRows" style="max-height:62vh;overflow-y:auto;padding:0 6px"></div>
+      </div>
+
+      <!-- 双文档 -->
+      <div class="inputs" id="doubleInputs" style="display:none">
+        <div class="inbox">
+          <h3>中文 ZH <label class="filebtn">上传 .txt<input type="file" accept=".txt" id="zhFile"></label></h3>
+          <textarea id="zhText" placeholder="粘贴中文原文，或上传 .txt（整段即可，无需分句）…"></textarea>
+        </div>
+        <div class="inbox">
+          <h3>English EN <label class="filebtn">上传 .txt<input type="file" accept=".txt" id="enFile"></label></h3>
+          <textarea id="enText" placeholder="Paste the English translation, or upload .txt…"></textarea>
+        </div>
+      </div>
+
+      <!-- 单文档 -->
+      <div class="inbox" id="singleInput" style="display:none;margin-bottom:14px">
+        <h3>中英双语（交替） <label class="filebtn">上传 .txt<input type="file" accept=".txt" id="singleFile"></label></h3>
+        <textarea id="singleText" placeholder="粘贴中英交替的文本（一段中文、一段英文…），或上传 .txt — 系统自动按语种分成两路再对齐"></textarea>
+      </div>
+
+      <!-- 双/单文档共用工具栏（OCR 模式隐藏） -->
+      <div class="iobar" id="ioTools" style="display:none">
+        <span class="tgrouplbl">清理</span>
+        <button class="tbtn" id="mdClean">清除 markdown 标签</button>
+        <button class="tbtn" id="swapZhEn" style="display:none">⇄ 调换中英</button>
+        <span class="tsep"></span>
+        <button class="btn btn-primary" id="runBtn">对齐</button>
+        <span class="hint">{% if desktop %}自动句对齐，结果可在下方逐行调整{% else %}用 bge-m3 自动句对齐，结果可在下方逐行调整{% endif %}</span>
+        <span style="flex:1"></span>
+        <span class="hint" id="cleanInfo"></span>
+        <button class="demo-link" id="demoBtn">载入示例</button>
+      </div>
+    </div>
+
+    <div id="errBox"></div>
+    <div id="restoreBox"></div>
+    <div id="driftBox"></div>
+    <div id="workbench" style="display:none">
+      <div class="toolbar">
+        <button class="tbtn" data-op="split">拆分 ↵</button>
+        <button class="tbtn" data-op="merge">合并↓</button>
+        <span class="tsep"></span>
+        <button class="tbtn" data-op="up">上移</button>
+        <button class="tbtn" data-op="down">下移</button>
+        <button class="tbtn" data-op="insert">插空行</button>
+        <button class="tbtn" data-op="del">删除</button>
+        <span class="tsep"></span>
+        <button class="tbtn ticon" data-op="undo" title="撤销">↺</button>
+        <button class="tbtn ticon" data-op="redo" title="恢复 / 重做">↻</button>
+        <span class="tsep"></span>
+        <button class="tbtn" data-op="aialign" style="color:var(--accent)" title="选一段(点行号→按住 Shift 点另一行)再点这里，用 AI 只重排这段的分组，绝不改字">AI 重对齐</button>
+        <button class="tbtn" data-op="aicheck" style="color:var(--man)">AI 校验</button>
+        <button class="tbtn" data-op="onlybad">只看问题</button>
+        <input class="findbox" id="findBox" placeholder="查找…">
+        <span class="tsep"></span>
+        {% if not desktop %}
+        <button class="tbtn" data-op="ingest" style="color:var(--accent);font-weight:700">入库检索</button>
+        <span class="tsep"></span>
+        {% endif %}
+        <span class="exp-wrap">
+          <button class="tbtn" data-op="export">导出 ▾</button>
+          <div class="exp-menu" id="expMenu">
+            <div data-fmt="tmx">TMX 记忆库 (.tmx)</div>
+            <div data-fmt="xlsx">Excel 工作簿 (.xlsx)</div>
+            <div data-fmt="docx">上下对照 Word (.docx)</div>
+            <div data-fmt="tsv">左右对照 文本 (制表符 .txt)</div>
+            <div data-fmt="txt">上下对照 文本 (换行 .txt)</div>
+            <div data-fmt="bfsu">双 TXT 逐行对齐 (BFSU · .zip)</div>
+            <div data-fmt="rtf">双语对照 RTF (.rtf)</div>
+            <div data-fmt="all">导出全部格式 (.zip)</div>
+            <div data-fmt="proj">工程存档 (.json · 可再导入继续改)</div>
+          </div>
+        </span>
+        <button class="tbtn" data-op="reset">返回上传</button>
+        <span class="tstat" id="tstat"></span>
+      </div>
+      <div class="ophint">点入中/英格子定位光标 → <b>回车</b>在光标处拆分。<b>合并↓</b>：光标在中文格只并中文、在英文格只并英文、点<b>行号</b>选中整行则中英都并。上移/下移/插空/删除作用于光标所在列。原文/译文均可直接点进格子改字（订正 OCR 错字），改动自动保存。</div>
+      <div class="tbl" id="tbl"></div>
+      <div class="legend">
+        <span><i class="dot" style="background:var(--hi)"></i>高(≥0.60)</span>
+        <span><i class="dot" style="background:var(--mid)"></i>中(0.45–0.60)</span>
+        <span><i class="dot" style="background:var(--lo)"></i>低(&lt;0.45)</span>
+        <span><i class="dot" style="background:var(--man)"></i>手动调整过</span>
+        <span style="margin-left:auto">行号点击=选中整行；红色描边=AI 标问题</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+const DESKTOP = {{ 'true' if desktop else 'false' }};
+const $ = s => document.querySelector(s);
+// ---- model: two independent segment columns + per-row meta ----
+let ZH=[], EN=[], META=[];          // META[i] = {score, manual, ai}
+let ZH_IMG_JOB=null, EN_IMG_JOB=null;   // OCR 来源的页图任务(分中/英);txt 上传时为 null
+let SEL=-1;                          // selected row index
+let ONLY_BAD=false;
+let UNDO=[], REDO=[];
+let SRC_BASE='aligned';   // 导出文件名的基名（取自上传的原文件名）
+let FIND='', DOC_MODE='proof';
+function hl(s){ if(!FIND) return esc(s); const e=esc(s);
+  try{ return e.replace(new RegExp('('+FIND.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi'),'<mark>$1</mark>'); }catch(_){ return e; } }
+
+function rowsCount(){ return Math.max(ZH.length, EN.length); }
+function esc(s){return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+// 显示：把 <<<PAGE n>>> 渲染成淡灰小标记（字面保留在文本里，编辑/拆分不受影响）
+function disp(s){ return hl(s).replace(/&lt;&lt;&lt;\s*PAGE\s*\d+\s*&gt;&gt;&gt;/ig, m=>`<span class="pagemark">${m}</span>`); }
+// 每行的来源页号：取该行(含)之前最近一个页码标记
+function pageArr(col){ const out=[]; let cur=null; const re=/<<<\s*PAGE\s*(\d+)\s*>>>/ig;
+  for(let i=0;i<col.length;i++){ const t=col[i]||''; let m,last=null; re.lastIndex=0; while((m=re.exec(t))) last=+m[1]; if(last!=null) cur=last; out.push(cur); } return out; }
+// 导出/入库前剔除页码标记，绝不进最终语料
+function stripPage(s){ return (s||'').replace(/<<<\s*PAGE\s*\d+\s*>>>/ig,'').replace(/[ \t]{2,}/g,' ').trim(); }
+function aiBad(m){ return m && m.ai && m.ai.ok===false; }
+
+function snapshot(){ return JSON.stringify({ZH,EN,META}); }
+function pushUndo(){ UNDO.push(snapshot()); if(UNDO.length>100)UNDO.shift(); REDO=[]; }
+function restore(s){ const o=JSON.parse(s); ZH=o.ZH; EN=o.EN; META=o.META; }
+function syncMeta(){ const n=rowsCount(); while(META.length<n)META.push({}); META.length=n; }
+
+// ---- 工程自动保存(localStorage):刷新/崩溃不再丢几小时的校对工作 ----
+const AS_KEY='alignWorkbench.v1';
+let _asT=null;
+function autosave(){ clearTimeout(_asT); _asT=setTimeout(()=>{
+  if(!rowsCount()) return;
+  try{ localStorage.setItem(AS_KEY, JSON.stringify(projData())); }
+  catch(_){ /* 超长文档超出 localStorage 限额：静默跳过，导出「工程存档」仍可手动保 */ }
+},600); }
+function projData(){ return {v:1,ts:Date.now(),base:SRC_BASE,ZH,EN,META}; }
+function loadProj(o){
+  if(!o||!Array.isArray(o.ZH)||!Array.isArray(o.EN)) throw new Error('工程文件格式不对');
+  ZH=o.ZH; EN=o.EN; META=Array.isArray(o.META)?o.META:[]; SRC_BASE=o.base||SRC_BASE||'aligned';
+  ZH_IMG_JOB=EN_IMG_JOB=null; UNDO=[]; REDO=[]; SEL=-1; SEL2=-1; ONLY_BAD=false;
+  $('#inputArea').style.display='none'; $('#workbench').style.display=''; render();
+}
+
+// ---- render ----
+function confClass(m){ if(!m)return''; if(m.manual)return'row-man'; if(m.score==null)return'';
+  if(m.score>=0.60)return'row-hi'; if(m.score>=0.45)return'row-mid'; return'row-lo'; }
+function confDot(m){ if(!m)return'var(--muted)'; if(m.manual)return'var(--man)'; if(m.score==null)return'var(--muted)';
+  if(m.score>=0.60)return'var(--hi)'; if(m.score>=0.45)return'var(--mid)'; return'var(--lo)'; }
+
+function render(){
+  syncMeta();
+  const n=rowsCount(), tbl=$('#tbl'); let html='';
+  for(let i=0;i<n;i++){
+    const m=META[i]||{}; if(ONLY_BAD && !aiBad(m)) continue;
+    const zh=ZH[i], en=EN[i];
+    const zhE=(zh==null||zh===''), enE=(en==null||en===''), bad=aiBad(m), selR=inSel(i);
+    const note=(m.ai&&m.ai.note)?`<div class="ai-note">${esc(m.ai.note)}</div>`:'';
+    const tag=bad?'<span class="aibad-tag">AI存疑</span>':'';
+    const sc=m.manual?'手动':(m.score==null?'—':(m.score*100).toFixed(0)+'%');
+    const zhBadge=(ZH_IMG_JOB&&m.zp!=null)?`<div class="pgbtn" data-img="zh" data-pg="${m.zp}" title="查看中文原图 第${m.zp}页">p${m.zp}</div>`:'';
+    const enBadge=(EN_IMG_JOB&&m.ep!=null)?`<div class="pgbtn" data-img="en" data-pg="${m.ep}" title="查看英文原图 第${m.ep}页">p${m.ep}</div>`:'';
+    html+=`<div class="trow ${confClass(m)} ${bad?'aibad':''} ${selR?'sel':''}" data-i="${i}">
+      <div class="tnum" data-num="1"><span class="conf" style="background:${confDot(m)}"></span>${i+1}${zhBadge}</div>
+      <div class="cell zh ${zhE?'empty':''}" contenteditable="true" data-side="zh" data-i="${i}">${zhE?'':disp(zh)}</div>
+      <div class="cell en ${enE?'empty':''}" contenteditable="true" data-side="en" data-i="${i}">${enE?'':disp(en)}</div>
+      <div class="tmeta">${sc}${tag?'<br>'+tag:''}${enBadge?'<br>'+enBadge:''}${note}</div>
+    </div>`;
+  }
+  tbl.innerHTML=html;
+  const lo=META.filter(m=>m&&!m.manual&&m.score!=null&&m.score<0.45).length;
+  const checked=META.some(m=>m&&m.ai), aib=META.filter(aiBad).length;
+  $('#tstat').textContent=`${n} 行 · ${lo} 低置信`+(checked?` · AI 标问题 ${aib}`:'')+(ONLY_BAD?'（仅问题行）':'');
+  flagDrift();
+  autosave();
+}
+
+// ---- 多行选区(点行号选单行；按住 Shift 点另一行选一段)----
+let SEL2=-1;
+function selLo(){ return SEL<0?-1:(SEL2>=0?Math.min(SEL,SEL2):SEL); }
+function selHi(){ return SEL<0?-1:(SEL2>=0?Math.max(SEL,SEL2):SEL); }
+function inSel(i){ return SEL>=0 && i>=selLo() && i<=selHi(); }
+
+// ---- 疑似错位段提示:连续低分行,一键 AI 只重对齐这一段 ----
+function flagDrift(){
+  const box=$('#driftBox'); if(!box) return;
+  const n=rowsCount(), runs=[]; let st=-1;
+  for(let i=0;i<=n;i++){
+    const m=META[i]||{}; const low=(i<n)&&!m.manual&&m.score!=null&&m.score<0.55;
+    if(low&&st<0) st=i;
+    else if(!low&&st>=0){ if(i-st>=2) runs.push([st,i-1]); st=-1; }
+  }
+  if(!runs.length){ box.innerHTML=''; return; }
+  box.innerHTML='<div class="warn">疑似错位段（连续低分）。可一键用 <b>AI 重对齐</b>只重排这一段的分组——<b>只改分组、绝不改字</b>：'
+    + runs.map(([a,b])=>`<button class="tbtn drift-btn" data-a="${a}" data-b="${b}" style="margin:5px 7px 0 0;border-color:var(--accent);color:var(--accent)">第 ${a+1}–${b+1} 行 · AI 重对齐</button>`).join('')
+    + '</div>';
+  box.querySelectorAll('.drift-btn').forEach(btn=>btn.onclick=()=>aiAlignRange(+btn.dataset.a,+btn.dataset.b));
+}
+
+// ---- 用 LLM 结果替换 [a..b] 行(原句按编号回填,文字逐字节不变)----
+function replaceRange(a,b,d){
+  pushUndo();
+  let zp=null,ep=null;
+  for(let i=a;i<=b;i++){ const m=META[i]||{}; if(zp==null&&m.zp!=null)zp=m.zp; if(ep==null&&m.ep!=null)ep=m.ep; }
+  const nZH=[],nEN=[],nM=[];
+  for(const bd of (d.beads||[])){
+    nZH.push((d.zh_sents||[]).slice(bd.zh[0],bd.zh[1]).join(''));
+    nEN.push((d.en_sents||[]).slice(bd.en[0],bd.en[1]).join(' '));
+    nM.push({score:bd.score,manual:false,zp,ep});
+  }
+  const cnt=b-a+1;
+  ZH.splice(a,cnt,...nZH); EN.splice(a,cnt,...nEN); META.splice(a,cnt,...nM);
+  SEL=a; SEL2=-1; render();
+}
+
+let _aiAligning=false;
+async function aiAlignRange(a,b){
+  if(_aiAligning){ flash('AI 重对齐进行中，请稍候…'); return; }
+  if(a<0){ flash('请先选一段：点行号选一行，按住 Shift 点另一行选起止'); return; }
+  if(b<=a){ flash('请选「一段」（按住 Shift 点选起止两行）；单行不需要重对齐'); return; }
+  const pairs=[]; for(let i=a;i<=b;i++) pairs.push({zh:stripPage(ZH[i]||''), en:stripPage(EN[i]||'')});
+  _aiAligning=true; flash(`正在用 AI 重对齐第 ${a+1}–${b+1} 行…`);
+  try{
+    const r=await fetch('/api/align/llm',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pairs})});
+    const d=await r.json();
+    if(d.error){ flash('AI 重对齐未执行：'+d.error); return; }   // 校验不过 → 原对齐不动
+    replaceRange(a,b,d);
+    flash(`第 ${a+1} 行起已用 AI 重对齐（只改分组，文字未变）`);
+  }catch(e){ flash('AI 对齐出错：'+e); }
+  finally{ _aiAligning=false; }
+}
+
+// ---- caret offset within a contenteditable cell ----
+function caretOffset(cell){
+  const sel=window.getSelection(); if(!sel.rangeCount) return -1;
+  const r=sel.getRangeAt(0).cloneRange(); r.selectNodeContents(cell);
+  try{ r.setEnd(sel.anchorNode, sel.anchorOffset); }catch(e){ return -1; }
+  return r.toString().length;
+}
+
+// ---- editing ops (content preserved: only split/merge/move, never rewrite) ----
+function colOf(side){ return side==='zh'?ZH:EN; }
+function joinSep(side){ return side==='zh'?'':' '; }
+
+function splitAt(side,i,off){
+  const col=colOf(side); if(i>=col.length) return;
+  const t=col[i]||''; if(off<=0||off>=t.length) return;
+  pushUndo();
+  col.splice(i,1, t.slice(0,off).trim(), t.slice(off).trim());
+  const pm=META[i]||{}; META.splice(i+1,0,{manual:true,zp:pm.zp,ep:pm.ep}); if(META[i])META[i]={...META[i],manual:true,score:null};
+  render();
+}
+function mergeDown(i){
+  // merge BOTH columns' cell i with i+1 (the common case: a 1:1 row wrongly split)
+  if(i<0||i>=rowsCount()-1) return; pushUndo();
+  for(const side of ['zh','en']){ const col=colOf(side);
+    if(i+1<col.length){ col.splice(i,2,((col[i]||'')+joinSep(side)+(col[i+1]||'')).trim()); }
+  }
+  const pm=META[i]||{}; META.splice(i+1,1); META[i]={manual:true,zp:pm.zp,ep:pm.ep}; render();
+}
+function mergeSide(side,i){
+  const col=colOf(side); if(i<0||i>=col.length-1) return; pushUndo();
+  col.splice(i,2,((col[i]||'')+joinSep(side)+(col[i+1]||'')).trim());
+  const pm=META[i]||{}; META[i]={manual:true,zp:pm.zp,ep:pm.ep}; render();
+}
+function moveCell(side,i,dir){    // 上移 dir=-1 / 下移 dir=+1: 与相邻格交换(滑过空格修错位)
+  const col=colOf(side), j=i+dir; if(j<0||j>=Math.max(col.length,1)) return; pushUndo();
+  while(col.length<=Math.max(i,j)) col.push('');
+  [col[i],col[j]]=[col[j],col[i]]; if(META[i])META[i].manual=true; render();
+}
+function insertBlank(side,i){ const col=colOf(side); pushUndo(); col.splice(i,0,''); META.splice(i,0,{manual:true}); render(); }
+function delCell(side,i){ const col=colOf(side); if(i>=col.length) return; pushUndo(); col.splice(i,1); render(); }
+function delRow(i){ pushUndo(); if(i<ZH.length)ZH.splice(i,1); if(i<EN.length)EN.splice(i,1); META.splice(i,1); render(); }
+
+// ---- selection ----
+let CARET={side:null,i:-1,off:-1}, _edited=false;
+$('#tbl').addEventListener('focusin', e=>{
+  const cell=e.target.closest('.cell'); if(!cell) return;
+  _edited=false;                              // 进入新格子：重置本次编辑的撤销标记
+  SEL=+cell.dataset.i; SEL2=-1;
+  document.querySelectorAll('.trow.sel').forEach(r=>{ if(+r.dataset.i!==SEL) r.classList.remove('sel'); });
+  cell.closest('.trow').classList.add('sel');
+});
+$('#tbl').addEventListener('click', e=>{
+  const pg=e.target.closest('.pgbtn'); if(pg){ const side=pg.dataset.img, job=side==='zh'?ZH_IMG_JOB:EN_IMG_JOB;
+    if(job) openLightbox(job, +pg.dataset.pg, side); return; }
+  const num=e.target.closest('.tnum'); if(num){ const i=+num.closest('.trow').dataset.i;
+    if(e.shiftKey && SEL>=0) SEL2=i; else { SEL=i; SEL2=-1; }   // Shift+点行号 = 选一段
+    render(); }
+});
+// ---- 扫描原图 lightbox ----
+const _LB=document.createElement('div'); _LB.className='lightbox';
+_LB.innerHTML='<div class="lbcap"></div><img alt="扫描原图">';
+document.body.appendChild(_LB);
+_LB.addEventListener('click',()=>_LB.classList.remove('show'));
+const _LBimg=_LB.querySelector('img'), _LBcap=_LB.querySelector('.lbcap');
+_LBimg.addEventListener('error',()=>{ _LBcap.textContent='原图已不可用（OCR 任务可能已释放，重新上传该 PDF 即可恢复）'; });
+function openLightbox(job,page,side){
+  _LBcap.textContent=(side==='zh'?'中文':'英文')+` 原图 · 第 ${page} 页（点任意处关闭）`;
+  _LBimg.src=`/api/proof/image?job=${job}&page=${page}`;
+  _LB.classList.add('show');
+}
+// 回车=在光标处拆分；其余输入正常放行（可手动订正文字）
+$('#tbl').addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault();
+  const cell=e.target.closest('.cell'); if(cell){ const off=caretOffset(cell); if(off>0) splitAt(cell.dataset.side,+cell.dataset.i,off); } }});
+// 编辑内容实时同步回数据数组（不重渲染，保住光标位置）
+$('#tbl').addEventListener('input', e=>{ const cell=e.target.closest('.cell'); if(!cell) return;
+  const i=+cell.dataset.i, side=cell.dataset.side, col=colOf(side);
+  if(!_edited){ pushUndo(); _edited=true; }     // 本次进入格子后的首次改动，存一个撤销点
+  while(col.length<=i) col.push('');
+  col[i]=cell.textContent;
+  cell.classList.toggle('empty', cell.textContent==='');
+  META[i]={...(META[i]||{}),manual:true,score:null};
+  autosave();
+});
+
+// ---- toolbar ----
+function curSide(){ const a=document.activeElement; return (a&&a.classList&&a.classList.contains('cell'))?a.dataset.side:'zh'; }
+document.querySelector('.toolbar').addEventListener('mousedown', e=>{
+  // capture caret/selection BEFORE the button steals focus
+  const cell=document.activeElement&&document.activeElement.closest&&document.activeElement.closest('.cell');
+  if(cell) CARET={side:cell.dataset.side,i:+cell.dataset.i,off:caretOffset(cell)};
+});
+document.querySelector('.toolbar').addEventListener('click', e=>{
+  const op=e.target.dataset.op; if(!op) return;
+  if(op==='export'){ $('#expMenu').classList.toggle('show'); return; }
+  if(op==='reset'){ $('#workbench').style.display='none'; $('#inputArea').style.display=''; return; }
+  if(op==='aicheck') return aiCheck();
+  if(op==='aialign') return aiAlignRange(selLo(), selHi());
+  if(op==='ingest') return ingestNow();
+  if(op==='onlybad'){ ONLY_BAD=!ONLY_BAD; render(); return; }
+  if(op==='undo'){ if(UNDO.length){ REDO.push(snapshot()); restore(UNDO.pop()); render(); } return; }
+  if(op==='redo'){ if(REDO.length){ UNDO.push(snapshot()); restore(REDO.pop()); render(); } return; }
+  if(SEL<0){ flash('请先点选一行（点行号），或把光标点进某个格子'); return; }
+  const side = CARET.i===SEL ? CARET.side : 'zh';
+  const cellFocused = CARET.i===SEL && CARET.side;
+  if(op==='split'){ if(CARET.i===SEL&&CARET.off>0) splitAt(CARET.side,CARET.i,CARET.off); else flash('请先把光标点进要拆分的格子里，再点拆分（或直接回车）'); }
+  else if(op==='merge'){ if(cellFocused) mergeSide(CARET.side,SEL); else mergeDown(SEL); }
+  else if(op==='up') moveCell(side,SEL,-1);
+  else if(op==='down') moveCell(side,SEL,+1);
+  else if(op==='insert') insertBlank(side,SEL);
+  else if(op==='del') delCell(side,SEL);
+  if(SEL>=rowsCount()) SEL=rowsCount()-1;
+});
+function flash(m){ const e=$('#errBox'); e.innerHTML=`<div class="err">${esc(String(m))}</div>`; setTimeout(()=>e.innerHTML='',2600); }
+
+// ---- export ----
+function exportName(fmt){ const b=SRC_BASE||'aligned'; return ({
+  tmx:b+'_对齐.tmx', xlsx:b+'_对齐.xlsx', docx:b+'_对齐_上下对照.docx',
+  tsv:b+'_对齐_左右对照.txt', txt:b+'_对齐_上下对照.txt', bfsu:b+'_对齐.zip',
+  rtf:b+'_双语对照.rtf', all:b+'_全部格式.zip'})[fmt]||(b+'.'+fmt); }
+function rowPairs(){ const n=rowsCount(),out=[]; for(let i=0;i<n;i++){ const m=META[i]||{}; out.push({zh:stripPage(ZH[i]),en:stripPage(EN[i]),type:'',score:m.manual?'manual':(m.score==null?'':m.score)}); } return out; }
+async function doExport(fmt){
+  $('#expMenu').classList.remove('show'); if(!rowsCount()){ flash('无对齐数据'); return; }
+  if(fmt==='proj'){   // 工程存档：纯前端打包当前工作台状态，可用「导入工程」接着改
+    const b=new Blob([JSON.stringify(projData())],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+    a.download=(SRC_BASE||'aligned')+'_工程.json'; a.click(); return;
+  }
+  try{
+    const r=await fetch('/api/align/export',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pairs:rowPairs(),format:fmt,name:SRC_BASE})});
+    if(!r.ok){ let m='导出失败'; try{m=(await r.json()).error||m;}catch(_){}; flash(m); return; }
+    const blob=await r.blob(); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=exportName(fmt); a.click();
+  }catch(e){ flash('导出出错：'+e); }
+}
+$('#expMenu').addEventListener('click', e=>{ const f=e.target.dataset.fmt; if(f) doExport(f); });
+document.addEventListener('click', e=>{ if(!e.target.closest('.exp-wrap')) $('#expMenu').classList.remove('show'); });
+
+// ---- 入库到检索平台 ----
+async function ingestNow(){
+  if(!rowsCount()){ flash('无对齐数据'); return; }
+  const name=prompt('入库到检索平台 — 给这批语料起个名字（作为语料库名，可在前台筛选）:', SRC_BASE||'对齐语料');
+  if(!name) return;
+  const btn=[...document.querySelectorAll('.tbtn')].find(b=>b.dataset.op==='ingest');
+  const old=btn.textContent; btn.innerHTML='<span class="spin"></span> 入库中'; btn.disabled=true;
+  try{
+    const d=await (await fetch('/api/align/ingest',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pairs:rowPairs(),name})})).json();
+    if(d.error){ flash(d.error); return; }
+    flash(`已入库：${d.added} 句 → 语料库「${d.corpus}」，前台即可检索（现共 ${d.total_pairs.toLocaleString()} 句对）`);
+  }catch(e){ flash('入库出错：'+e); }
+  finally{ btn.textContent=old; btn.disabled=false; }
+}
+
+// ---- AI check（后台任务 + 轮询：长文档不再撞请求超时，判定边出边上屏）----
+function applyVerdicts(verdicts){
+  syncMeta(); let n=0;
+  (verdicts||[]).forEach((v,i)=>{ if(v&&META[i]){ META[i].ai=v; n++; } });
+  return n;
+}
+async function aiCheck(){
+  if(!rowsCount()) return;
+  const btn=[...document.querySelectorAll('.tbtn')].find(b=>b.dataset.op==='aicheck');
+  const old=btn.textContent; btn.innerHTML='<span class="spin"></span> 校验中'; btn.disabled=true;
+  try{
+    const pairs=rowPairs();
+    const s=await (await fetch('/api/align/check',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pairs})})).json();
+    if(s.error){ flash(s.error); return; }
+    while(true){
+      await new Promise(r=>setTimeout(r,1200));
+      const st=await (await fetch('/api/align/check/status?job='+s.job)).json();
+      if(st.error && !st.status){ flash(st.error); break; }
+      btn.innerHTML=`<span class="spin"></span> 校验中 ${st.done}/${st.total}`;
+      applyVerdicts(st.verdicts);
+      // 判定增量上屏；但用户正在格子里改字时不重渲染（避免打断输入、丢光标）
+      const a=document.activeElement;
+      if(!(a&&a.classList&&a.classList.contains('cell'))) render();
+      if(st.status==='done'){ render(); break; }
+      if(st.status==='error'){ flash('AI 校验失败：'+st.error); render(); break; }
+    }
+  }catch(e){ flash('AI 校验出错：'+e); }
+  finally{ btn.textContent=old; btn.disabled=false; }
+}
+
+// ---- run alignment ----
+const PAGES_PER_CHUNK = 25;   // book-length single docs are aligned page-group by page-group
+// 按 <<<PAGE n>>> 边界把长文档切成每 PAGES_PER_CHUNK 页一段（页边界是天然、低风险的切点）
+function chunkByPages(text, pagesPer){
+  const re=/<<<\s*PAGE\s*\d+\s*>>>/ig, idxs=[]; let mm;
+  while((mm=re.exec(text))!==null) idxs.push(mm.index);
+  if(idxs.length<2) return [text];                    // 0/1 个页标记 → 不切
+  const pages=[];
+  for(let k=0;k<idxs.length;k++) pages.push(text.slice(idxs[k], k+1<idxs.length?idxs[k+1]:undefined));
+  if(idxs[0]>0) pages[0]=text.slice(0,idxs[0])+pages[0];   // 首个页标记之前的内容并入第一页
+  const chunks=[];
+  for(let k=0;k<pages.length;k+=pagesPer) chunks.push(pages.slice(k,k+pagesPer).join(''));
+  return chunks;
+}
+async function alignChunk(bodyObj){
+  const r=await fetch('/api/align',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(bodyObj)});
+  const raw=await r.text(); let d;
+  try{ d=JSON.parse(raw); }
+  catch(_){ throw new Error(r.status>=500
+    ? `服务器处理超时或出错（HTTP ${r.status}）。该段文档可能过长，请减少每段页数后重试。`
+    : `服务器返回异常（HTTP ${r.status}）。`); }
+  if(d.error) throw new Error(d.error);
+  return d;
+}
+function appendBeads(d){
+  for(const b of d.beads){
+    ZH.push(d.zh_sents.slice(b.zh[0],b.zh[1]).join(''));
+    EN.push(d.en_sents.slice(b.en[0],b.en[1]).join(' '));
+    META.push({score:b.score, manual:false});
+  }
+}
+async function run(){
+  let chunks;
+  if(DOC_MODE==='proof'){ flash('扫描件 OCR 模式：校对完用「→ 填入中文/英文框」送到对齐'); return; }
+  if(DOC_MODE==='single'){ const t=$('#singleText').value.trim();
+    if(!t){ $('#errBox').innerHTML='<div class="err">请粘贴/上传中英交替的单文档。</div>'; return; }
+    chunks=chunkByPages(t, PAGES_PER_CHUNK).map(text=>({mode:'single',text})); }
+  else { const zh=$('#zhText').value.trim(), en=$('#enText').value.trim();
+    if(!zh||!en){ $('#errBox').innerHTML='<div class="err">中英文本都要填。</div>'; return; }
+    chunks=[{zh,en}]; }   // 双文档：中英两文件页边界未必对齐，整体对齐
+  const btn=$('#runBtn'); btn.disabled=true; $('#errBox').innerHTML='';
+  ZH=[]; EN=[]; META=[]; const warnedSegs=[]; let zhN=0, enN=0;
+  try{
+    for(let c=0;c<chunks.length;c++){
+      btn.innerHTML=`<span class="spin"></span> 对齐中${chunks.length>1?` ${c+1}/${chunks.length} 段`:'…'}`;
+      const d=await alignChunk(chunks[c]);
+      zhN+=(d.zh_sents||[]).length; enN+=(d.en_sents||[]).length;
+      if(d.fallback) warnedSegs.push(chunks.length>1?`第 ${c+1}/${chunks.length} 段`:'本文档');
+      appendBeads(d);
+    }
+    if(!ZH.length){ $('#errBox').innerHTML='<div class="err">未得到任何对齐结果（请检查文档是否中英交替）。</div>'; return; }
+    // 抽取来源页码到 META，再把页码标记从正文剔除（正文保持干净，页码独立存活）
+    const _zp=pageArr(ZH), _ep=pageArr(EN);
+    for(let i=0;i<META.length;i++){ META[i].zp=_zp[i]; META[i].ep=_ep[i]; }
+    for(let i=0;i<ZH.length;i++) ZH[i]=stripPage(ZH[i]);
+    for(let i=0;i<EN.length;i++) EN[i]=stripPage(EN[i]);
+    UNDO=[]; REDO=[]; SEL=-1; ONLY_BAD=false;
+    $('#inputArea').style.display='none'; $('#workbench').style.display='';
+    render();
+    if(warnedSegs.length){ const less=enN<zhN?'英文':'中文', more=enN<zhN?'中文':'英文';
+      $('#errBox').innerHTML=`<div class="warn"><b>注意：${esc(warnedSegs.join('、'))}中英句数严重失衡</b>——共识别<b>中文 ${zhN} 句 / 英文 ${enN} 句</b>，差距过大无法智能对齐，已退回逐句兜底配对（<b>没有丢内容</b>，但全部标红 0%、可能错位）。<br>多半是<b>${less}缺了大段内容</b>（如部分页 OCR 失败/未填入）。请先补全${less}文本，使两侧句数大致相当，再重新对齐；否则这就是机械 1:1 排版，不是真对齐。</div>`; }
+    else if(chunks.length>1) flash(`已分 ${chunks.length} 段对齐完成，共 ${ZH.length} 行；段与段交界处如有错位可手动合并/拆分调整`);
+  }catch(e){
+    // 已对齐的段先保留：有结果就进工作台，错误另行提示
+    if(ZH.length){ const _zp=pageArr(ZH),_ep=pageArr(EN); for(let i=0;i<META.length;i++){META[i].zp=_zp[i];META[i].ep=_ep[i];}
+      for(let i=0;i<ZH.length;i++) ZH[i]=stripPage(ZH[i]); for(let i=0;i<EN.length;i++) EN[i]=stripPage(EN[i]);
+      UNDO=[];REDO=[];SEL=-1;ONLY_BAD=false; $('#inputArea').style.display='none'; $('#workbench').style.display=''; render(); }
+    $('#errBox').innerHTML=`<div class="err">对齐出错：${esc(String(e.message||e))}</div>`;
+  }
+  finally{ btn.textContent='对齐'; btn.disabled=false; }
+}
+$('#runBtn').addEventListener('click', run);
+
+// ---- file upload + demo ----
+function baseName(fn){ let b=fn.replace(/\.[^.]+$/,''); b=b.replace(/[._\-\s]*(中文|英文|ZH|EN|zh|en)$/,''); return b.trim()||'aligned'; }
+function loadFile(input,target,isZh){ input.addEventListener('change',()=>{ const f=input.files[0]; if(!f)return; if(isZh) SRC_BASE=baseName(f.name);
+  if(target==='#zhText') ZH_IMG_JOB=null; if(target==='#enText') EN_IMG_JOB=null;   // 直接传 txt：无扫描原图
+  const r=new FileReader(); r.onload=()=>{$(target).value=r.result;}; r.readAsText(f,'utf-8'); }); }
+loadFile($('#zhFile'),'#zhText',true); loadFile($('#enFile'),'#enText',false); loadFile($('#singleFile'),'#singleText',true);
+// ---- tab 切换 + 流程条 ----
+const TAB_HINT={proof:'',   // 流程条已表达步骤，省去重复的箭头提示行
+  double:'中、英各一个文件，分别贴上 / 上传',
+  single:'一个文件里中英交替，系统自动分语种'};
+// 每个 tab 的流程步骤；点某步 = 滚动 / 聚焦到对应控件（不强制从头来）
+const FLOWS={
+  proof:[
+    {n:'1',t:'选择 PDF · 设页码',d:'选扫描件 PDF，填识别页码范围（整本太厚建议分段）',sel:'#proofFile',focus:1},
+    {n:'2',t:'开始 OCR 识别',d:'GLM-OCR 逐页识别，左原图、右可编辑文本',sel:'#proofBtn'},
+    {n:'3',t:'逐页校对',d:'对着原图改错字；可一键清洗去 markdown',sel:'#proofRows'},
+    {n:'4',t:'送入对齐',d:'中英混排→单文档；纯中 / 英→对应框',sel:'#sendBtn',menu:1},
+  ],
+  double:[
+    {n:'1',t:'准备中英文本',d:'中、英各贴一栏或上传 .txt（整段即可，无需分句）',sel:'#zhText',focus:1},
+    {n:'2',t:'清除 markdown（可选）',d:'去 # 标题 / &lt;div&gt; / 图片占位等，正文不动',sel:'#mdClean'},
+    {n:'3',t:'对齐',d:DESKTOP?'自动句对齐，结果逐行校对后导出':'bge-m3 自动句对齐，结果逐行校对、导出、入库',sel:'#runBtn'},
+  ],
+  single:[
+    {n:'1',t:'准备中英交替文本',d:'一段中文一段英文…，贴上或上传 .txt',sel:'#singleText',focus:1},
+    {n:'2',t:'清除 markdown（可选）',d:'去 # 标题 / &lt;div&gt; / 图片占位等杂质',sel:'#mdClean'},
+    {n:'3',t:'对齐',d:'长文档自动按页分段对齐；结果可逐行校对',sel:'#runBtn'},
+  ],
+};
+function renderFlow(){
+  const steps=FLOWS[DOC_MODE]||[];
+  $('#flowBar').innerHTML=steps.map((s,i)=>`<button type="button" class="step${i===0?' active':''}" data-fi="${i}">
+    <span class="sn">${s.n}</span><span class="st">${s.t}</span><span class="sd">${s.d}</span></button>`).join('');
+}
+$('#flowBar').addEventListener('click', e=>{
+  const st=e.target.closest('.step'); if(!st) return;
+  const s=(FLOWS[DOC_MODE]||[])[+st.dataset.fi]; if(!s) return;
+  $('#flowBar').querySelectorAll('.step').forEach(x=>x.classList.toggle('active', x===st));
+  const el=$(s.sel); if(!el) return;
+  el.scrollIntoView({behavior:'smooth',block:'center'});
+  el.classList.remove('pulse'); void el.offsetWidth; el.classList.add('pulse');
+  if(s.focus) try{el.focus();}catch(_){}
+  if(s.menu) $('#sendMenu').classList.add('show');
+});
+function selectTab(d){
+  DOC_MODE=d;
+  $('#docSeg').querySelectorAll('button').forEach(b=>b.classList.toggle('active',b.dataset.doc===d));
+  $('#proofInput').style.display = d==='proof'?'block':'none';
+  $('#doubleInputs').style.display = d==='double'?'grid':'none';
+  $('#singleInput').style.display = d==='single'?'block':'none';
+  $('#ioTools').style.display = d==='proof'?'none':'flex';
+  $('#swapZhEn').style.display = d==='double'?'inline-block':'none';
+  $('#tabHint').textContent = TAB_HINT[d]||'';
+  renderFlow();
+}
+$('#docSeg').addEventListener('click', e=>{ const d=e.target.dataset.doc; if(d) selectTab(d); });
+$('#swapZhEn').addEventListener('click',()=>{ const z=$('#zhText'),e=$('#enText'); const t=z.value; z.value=e.value; e.value=t; flash('已调换中英文本内容'); });
+
+// ---- 送入对齐 下拉 ----
+$('#sendBtn').addEventListener('click', e=>{ e.stopPropagation(); $('#sendMenu').classList.toggle('show'); });
+document.addEventListener('click', e=>{ if(!e.target.closest('.send-wrap')) $('#sendMenu').classList.remove('show'); });
+
+// ---- 双/单文档：清除 markdown 标签（就地清理输入框，正文不动） ----
+$('#mdClean').addEventListener('click', async ()=>{
+  const targets = DOC_MODE==='single' ? [$('#singleText')] : [$('#zhText'),$('#enText')];
+  const boxes=targets.filter(t=>t&&t.value.trim());
+  if(!boxes.length){ flash('文本框是空的'); return; }
+  const opts={markdown:true,page_markers:false,headers:false,footnote_marks:false,asterisks:false,page_numbers:false};
+  const btn=$('#mdClean'), old=btn.textContent; btn.disabled=true; btn.textContent='清理中…'; let n=0;
+  try{
+    for(const tx of boxes){
+      const d=await (await fetch('/api/clean',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:tx.value,opts})})).json();
+      if(d.text!=null){ tx.value=d.text; n+=(d.report&&d.report.markdown)||0; }
+    }
+    $('#cleanInfo').textContent=`已清除 markdown 标记 ${n} 处`;
+  }catch(e){ flash('清理出错：'+e); }
+  finally{ btn.disabled=false; btn.textContent=old; }
+});
+
+// ---- 图文校对 ----
+let PROOF_PDF=null, PROOF_JOB=null;
+$('#proofFile').addEventListener('change',()=>{ const f=$('#proofFile').files[0]; if(!f) return;
+  PROOF_PDF=f; SRC_BASE=baseName(f.name);
+  // 文件名收成 chip：单行省略 + 悬停看全名 + ✕ 取消（不再底部重复弹提示）
+  $('#proofFileName').innerHTML=`<span class="fchip" title="${esc(f.name)}"><span class="fic">PDF</span><span class="fname">${esc(f.name)}</span><span class="fx" title="取消">✕</span></span>`;
+});
+$('#proofFileName').addEventListener('click', e=>{ if(!e.target.closest('.fx')) return;
+  PROOF_PDF=null; $('#proofFile').value=''; $('#proofFileName').textContent='还没选 PDF — 点右上角「选择 PDF」开始'; });
+function isProofFail(t){ return /^\s*（?第\s*\d+\s*页\s*OCR\s*失败|OCR\s*失败[:：]/.test(t||''); }
+function addProofRow(p){
+  const div=document.createElement('div'); div.className='proof-row'; div.dataset.no=p.no;
+  const url=`/api/proof/image?job=${PROOF_JOB}&page=${p.no}`;
+  div.innerHTML=`<div class="proof-no">p${p.no}
+      <button class="proof-retry" data-eng="auto" title="依次试：智谱OCR → GLM-4V → 千问，失败自动换下一个">↻ 重试本页</button>
+      <button class="proof-retry proof-vlm" data-eng="qwen" title="直接用千问 Qwen2.5-VL（不同厂商，绕开智谱敏感词拦截）">换千问</button>
+    </div>
+    <div class="proof-img"><a href="${url}" target="_blank"><img loading="lazy" src="${url}"></a></div>
+    <textarea class="proof-txt" spellcheck="false"></textarea>`;
+  const tx=div.querySelector('.proof-txt'), img=div.querySelector('img');
+  tx.value=p.text||'';
+  if(isProofFail(p.text)) div.classList.add('failed');   // 失败页标红、置顶提示
+  div.querySelectorAll('.proof-retry').forEach(b=>b.addEventListener('click',()=>retryProofPage(div,b.dataset.eng)));
+  // 文本框高度自动跟随左侧原图，两栏齐平，逐页翻看更顺手（仍可手动拖动微调）
+  const fit=()=>{ const h=img.clientHeight; if(h>80) tx.style.height=h+'px'; };
+  img.addEventListener('load', fit); if(img.complete) fit();
+  $('#proofRows').appendChild(div);
+  $('#proofTools').style.display='flex';   // 有识别内容了，露出校对 / 送入对齐工具栏
+}
+async function retryProofPage(div, engine){
+  const no=div.dataset.no, tx=div.querySelector('.proof-txt');
+  const btns=[...div.querySelectorAll('.proof-retry')];
+  const btn=div.querySelector(engine==='qwen'?'.proof-vlm':'.proof-retry:not(.proof-vlm)');
+  if(!PROOF_JOB){ flash('请先做一次 OCR'); return; }
+  const old=btn.innerHTML; btn.innerHTML='<span class="spin"></span>…'; btns.forEach(b=>b.disabled=true);
+  try{
+    const d=await (await fetch('/api/proof/retry',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({job:PROOF_JOB,page:Number(no),engine:engine||'auto'})})).json();
+    // 失败时把完整报错写进文本框(持久、可复制),不再一闪而过
+    if(d.error && d.ok===undefined){ div.classList.add('failed');
+      tx.value='【任务/页面问题】\n'+d.error; flash(d.error); return; }   // 多为任务过期、原图已释放
+    if(d.ok){ tx.value=d.text||''; div.classList.toggle('failed',isProofFail(d.text));
+      const eng={ocr:'智谱OCR',vlm:'GLM-4V',qwen:'千问'}[d.engine]||d.engine;
+      flash(`第 ${no} 页已识别（${eng}）`); }
+    else { div.classList.add('failed'); tx.value='【各引擎报错,请复制给开发者】\n'+(d.error||'(无错误信息)');
+      flash(`第 ${no} 页仍失败,完整报错已写入右侧文本框`); }
+  }catch(e){ flash('重试出错：'+e); }
+  finally{ btn.innerHTML=old; btns.forEach(b=>b.disabled=false); }
+}
+// OCR 完成后，若有失败页把第一处滚动到视野并提示
+function flagProofFailures(){
+  const bad=[...document.querySelectorAll('#proofRows .proof-row.failed')];
+  if(bad.length){ flash(`有 ${bad.length} 页 OCR 失败，点该页「↻ 重试本页」即可单独重跑`); bad[0].scrollIntoView({block:'center',behavior:'smooth'}); }
+}
+let _refitT; addEventListener('resize',()=>{ clearTimeout(_refitT); _refitT=setTimeout(()=>{
+  document.querySelectorAll('#proofRows .proof-row').forEach(r=>{ const img=r.querySelector('img'),tx=r.querySelector('.proof-txt'); if(img&&img.clientHeight>80) tx.style.height=img.clientHeight+'px'; });
+},150); });
+function proofText(){ return [...document.querySelectorAll('#proofRows .proof-row')]
+  .map(r=>`<<<PAGE ${String(r.dataset.no).padStart(3,'0')}>>>\n${r.querySelector('.proof-txt').value}`).join('\n\n'); }
+$('#proofBtn').addEventListener('click', async ()=>{
+  if(!PROOF_PDF){ flash('请先选择 PDF'); return; }
+  const fd=new FormData(); fd.append('file',PROOF_PDF); fd.append('start',$('#proofStart').value||'1'); fd.append('end',$('#proofEnd').value||'');
+  const btn=$('#proofBtn'); btn.innerHTML='<span class="spin"></span> OCR 识别中'; btn.disabled=true; $('#proofRows').innerHTML=''; $('#proofProg').textContent='上传中…';
+  try{
+    const s=await (await fetch('/api/proof/start',{method:'POST',body:fd})).json();
+    if(s.error){ flash(s.error); return; }
+    PROOF_JOB=s.job; let rendered=0;
+    while(true){
+      await new Promise(r=>setTimeout(r,1500));
+      // since=已渲染页数 → 服务器只回新增页，长书轮询不再整包重发
+      const st=await (await fetch('/api/proof/status?job='+PROOF_JOB+'&since='+rendered)).json();
+      if(st.error){ flash(st.error); break; }
+      $('#proofProg').textContent = st.total?`已识别 ${st.done}/${st.total} 页`:'渲染页面中…';
+      for(const p of (st.pages||[])) addProofRow(p);
+      rendered+=(st.pages||[]).length;
+      if(st.status==='done'){ $('#proofProg').textContent=`完成，共 ${st.total} 页`; flagProofFailures(); break; }
+      if(st.status==='error'){ flash('OCR 失败：'+st.error); break; }
+    }
+  }catch(e){ flash('出错：'+e); }
+  finally{ btn.textContent='开始 OCR'; btn.disabled=false; }
+});
+$('#proofDownload').addEventListener('click',()=>{ const t=proofText(); if(!t.trim()){flash('还没有校对内容');return;} const b=new Blob([t],{type:'text/plain;charset=utf-8'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download=(SRC_BASE||'proof')+'_校对.txt'; a.click(); });
+// 逐页清洗：只去 markdown 标记，保留正文与页码（页码标记在 proofText() 里加，不在文本框内）
+$('#proofClean').addEventListener('click', async ()=>{
+  const boxes=[...document.querySelectorAll('#proofRows .proof-txt')];
+  if(!boxes.length){ flash('还没有识别内容'); return; }
+  const opts={markdown:true, page_markers:false, headers:false, footnote_marks:false, asterisks:false, page_numbers:false};
+  $('#proofCleanInfo').textContent='清洗中…'; let n=0;
+  try{
+    for(const tx of boxes){
+      if(!tx.value.trim()) continue;
+      if(tx.dataset.raw===undefined) tx.dataset.raw=tx.value;   // 记住清洗前，可还原
+      const d=await (await fetch('/api/clean',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:tx.value,opts})})).json();
+      tx.value=d.text||tx.value; n+=(d.report&&d.report.markdown)||0;
+    }
+    $('#proofCleanInfo').textContent=`已去 markdown 标记 ${n} 处（再点一次「清洗」无效则已干净）`;
+  }catch(e){ flash('清洗出错：'+e); $('#proofCleanInfo').textContent=''; }
+});
+// 还原：把每页恢复到清洗前的原始 OCR 文本
+$('#proofRestore').addEventListener('click',()=>{
+  const boxes=[...document.querySelectorAll('#proofRows .proof-txt')]; let n=0;
+  boxes.forEach(tx=>{ if(tx.dataset.raw!==undefined){ tx.value=tx.dataset.raw; n++; } });
+  $('#proofCleanInfo').textContent = n?`已还原 ${n} 页到清洗前文本`:'没有可还原的内容（清洗后才会记录原文）';
+  if(n) flash('已还原到清洗前的识别文本');
+});
+document.querySelectorAll('[data-pfill]').forEach(b=>b.addEventListener('click',()=>{ const t=proofText(); if(!t.trim()){flash('还没有校对内容');return;}
+  $('#sendMenu').classList.remove('show');
+  const k=b.dataset.pfill;
+  if(k==='single'){ $('#singleText').value=t; ZH_IMG_JOB=EN_IMG_JOB=PROOF_JOB; selectTab('single'); }
+  else { if(k==='zh'){ $('#zhText').value=t; ZH_IMG_JOB=PROOF_JOB; } else { $('#enText').value=t; EN_IMG_JOB=PROOF_JOB; }
+    selectTab('double'); }
+  flash('已填入（对齐后可点行号旁/右侧的页码徽标查看扫描原图；导出/入库会自动去掉页码标记）'); }));
+
+// 查找高亮
+$('#findBox').addEventListener('input', e=>{ FIND=e.target.value.trim(); render(); });
+const DEMO_ZH='中国共产党是中国工人阶级的先锋队，同时是中国人民和中华民族的先锋队，是中国特色社会主义事业的领导核心。党的最高理想和最终目标是实现共产主义。马克思列宁主义揭示了人类社会历史发展的规律，它的基本原理是正确的，具有强大的生命力。';
+const DEMO_EN='The Communist Party of China is the vanguard of the Chinese working class, the Chinese people, and the Chinese nation. It is the leadership core for the cause of socialism with Chinese characteristics. The Party’s highest ideal and ultimate goal is the realization of communism. Marxism-Leninism reveals the laws governing the development of the history of human society. Its basic tenets are correct and have tremendous vitality.';
+$('#demoBtn').addEventListener('click',()=>{
+  if(DOC_MODE==='single'){
+    // 中英交替（一段中、一段英），供单文档模式自动分语种
+    const zs=DEMO_ZH.split(/(?<=。)/).filter(Boolean);
+    const es=DEMO_EN.split(/(?<=\.)\s+/).filter(Boolean);
+    const lines=[]; const n=Math.max(zs.length,es.length);
+    for(let i=0;i<n;i++){ if(zs[i])lines.push(zs[i]); if(es[i])lines.push(es[i]); }
+    $('#singleText').value=lines.join('\n\n');
+  } else {
+    $('#zhText').value=DEMO_ZH; $('#enText').value=DEMO_EN;
+  }
+});
+// ---- 导入工程 / 恢复上次自动保存 ----
+$('#projImport').addEventListener('click',()=>$('#projFile').click());
+$('#projFile').addEventListener('change',()=>{ const f=$('#projFile').files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ try{ loadProj(JSON.parse(r.result)); flash('工程已导入，接着上次继续'); }catch(e){ flash('导入失败：'+(e.message||e)); } };
+  r.readAsText(f,'utf-8'); $('#projFile').value=''; });
+(function offerRestore(){
+  let o=null; try{ o=JSON.parse(localStorage.getItem(AS_KEY)||'null'); }catch(_){}
+  if(!o||!Array.isArray(o.ZH)||!o.ZH.length) return;
+  const when=new Date(o.ts||Date.now()).toLocaleString('zh-CN');
+  $('#restoreBox').innerHTML=`<div class="warn">找到上次自动保存的对齐工作：<b>${esc(o.base||'未命名')}</b> · ${o.ZH.length} 行 · ${when}。
+    <button class="tbtn" id="restoreYes" style="border:1px solid var(--accent);color:var(--accent);margin:0 6px">恢复继续</button>
+    <button class="tbtn" id="restoreNo" style="border:1px solid var(--border)">丢弃</button></div>`;
+  $('#restoreYes').onclick=()=>{ $('#restoreBox').innerHTML=''; try{ loadProj(o); flash('已恢复上次工作'); }catch(e){ flash(String(e)); } };
+  $('#restoreNo').onclick=()=>{ localStorage.removeItem(AS_KEY); $('#restoreBox').innerHTML=''; };
+})();
+
+selectTab('proof');   // 初始化默认 tab + 流程条
+if(new URLSearchParams(location.search).get('demo')==='1'){ selectTab('double'); $('#demoBtn').click(); setTimeout(run,200); }
+</script>
+{% if desktop %}
+<script>
+
+// 单机版：顶栏标出当前对齐用的是语义向量还是内置离线算法。使用者有权知道
+// 自己看到的对齐是哪一档算出来的，尤其是没填 key 的时候。
+fetch('/api/mode').then(r=>r.json()).then(d=>{
+  const el = document.getElementById('modeTag'); if(!el) return;
+  el.textContent = d.semantic ? '语义对齐' : '离线对齐';
+  el.title = d.semantic ? 'bge-m3 跨语言向量对齐'
+                        : '内置长度对齐（Gale-Church），无需联网；到设置里填 SiliconFlow 密钥可升级为语义对齐';
+  el.style.color = d.semantic ? '#d6a85f' : '#9a938a';
+}).catch(()=>{});
+</script>
+{% endif %}
+</body>
+</html>
