@@ -19,6 +19,11 @@ jobs:
             artifact: CorpusAligner-Windows
     runs-on: ${{ matrix.os }}
 
+    env:
+      # Windows runner 的控制台默认不是 UTF-8，中文输出会让脚本崩掉
+      PYTHONUTF8: "1"
+      PYTHONIOENCODING: "utf-8"
+
     steps:
       - uses: actions/checkout@v4
 

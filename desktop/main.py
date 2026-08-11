@@ -97,6 +97,12 @@ def _open_when_up(url: str, timeout: float = 20.0) -> None:
 
 
 def main() -> int:
+    # 同上：Windows 上不强制 UTF-8，启动横幅里的中文会让程序直接崩
+    for _s in (sys.stdout, sys.stderr):
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, OSError):
+            pass
     settings.bootstrap()          # 必须在 import config 之前：config 在导入时读 env
 
     import config                                        # noqa: E402

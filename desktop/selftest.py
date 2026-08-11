@@ -15,6 +15,13 @@ _ROOT = Path(__file__).resolve().parent.parent
 if str(_ROOT) not in sys.path:
     sys.path.insert(0, str(_ROOT))
 
+# Windows 控制台默认不是 UTF-8，打印中文会 UnicodeEncodeError，先强制过来
+for _s in (sys.stdout, sys.stderr):
+    try:
+        _s.reconfigure(encoding="utf-8", errors="replace")
+    except (AttributeError, OSError):
+        pass
+
 CASES: list[tuple[str, bool]] = []
 
 
